@@ -485,13 +485,13 @@ body { background: #f7f5ef; }
 .filter-button {
   padding: 21px 0;
   color: #888273;
-  font-size: 9px;
-  font-weight: 500;
-  letter-spacing: .045em;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .035em;
 }
-.filter-button.selected { color: #806d4c; }
-.filter-button.selected::after { height: 1px; background: #a58d60; }
-.filter-button span { color: #a18e69; font-size: 7px; }
+.filter-button.selected { color: #66543a; }
+.filter-button.selected::after { height: 2px; background: #a58d60; }
+.filter-button span { margin-left: 4px; color: #887750; font-size: 8px; font-weight: 700; }
 .sort-control { color: #827c6e; font-size: 9px; }
 .sort-control select {
   color: #433e32;
@@ -715,7 +715,7 @@ body { background: #f7f5ef; }
   .section-aside p { font-size: 10px; }
   .collection-toolbar { min-height: 52px; margin-bottom: 20px; }
   .filter-list { gap: 19px; }
-  .filter-button { padding: 17px 0; font-size: 8px; }
+  .filter-button { padding: 17px 0; font-size: 9px; font-weight: 700; }
   .sort-control select { width: 84px; font-size: 8px; }
   .product-grid { gap: 28px 10px; }
   .product-image-wrap { aspect-ratio: .73; }

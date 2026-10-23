@@ -141,7 +141,7 @@ input[type="checkbox"] { width: 15px; min-height: 15px; height: 15px; accent-col
 .image-upload-field > .field-hint { line-height: 1.5; }
 .product-options { display: flex; flex-wrap: wrap; gap: 16px; padding-top: 3px; }
 .product-image-preview { min-height: 280px; padding: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; border: 1px solid var(--line); background: #f8f7f2; }
-.preview-kicker, .category-list-heading { color: var(--muted); font-size: 8px; font-weight: 700; letter-spacing: .13em; }
+.preview-kicker, .category-list-heading { color: var(--muted); font-size: 9px; font-weight: 700; letter-spacing: .13em; }
 .product-image-preview > img { width: 100%; max-height: 310px; flex: 1; object-fit: contain; }
 .image-preview-empty { min-height: 205px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; color: var(--muted); }
 .image-preview-empty > span { width: 48px; height: 48px; margin-bottom: 4px; border: 1px solid #d9d7ce; display: grid; place-items: center; color: #797b6e; font-size: 22px; }
@@ -163,7 +163,7 @@ input[type="checkbox"] { width: 15px; min-height: 15px; height: 15px; accent-col
 .inline-form label { font-size: 9px; }
 .inline-form input { width: min(300px, 100%); }
 .category-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 9px; }
-.category-item { min-height: 68px; padding: 0 13px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid var(--line); background: white; font-size: 10px; font-weight: 600; transition: border-color .15s, transform .15s; }
+.category-item { min-height: 68px; padding: 0 13px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid var(--line); background: white; font-size: 12px; font-weight: 700; transition: border-color .15s, transform .15s; }
 .category-item:hover { border-color: #c6c4b8; transform: translateY(-1px); }
 .category-item > span { display: flex; align-items: center; gap: 9px; }
 .category-item > span::before { width: 7px; height: 7px; border-radius: 50%; background: #a5b766; content: ""; }
@@ -251,7 +251,7 @@ input[type="checkbox"] { width: 15px; min-height: 15px; height: 15px; accent-col
   .product-form-wide { grid-column: 1; }
   .category-create-card { grid-template-columns: auto 1fr; gap: 12px; }
   .category-name-field, .category-create-card > .primary-button { grid-column: 1 / -1; }
-  .category-list-heading { font-size: 7px; }
+  .category-list-heading { font-size: 8px; font-weight: 700; }
   .faq-editor { padding: 12px; }
   .faq-editor-heading { align-items: flex-start; flex-direction: column; }
   .faq-item { grid-template-columns: 1fr 30px; }
