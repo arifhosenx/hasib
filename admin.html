@@ -167,6 +167,19 @@
 
         <section class="view" id="view-settings">
           <div class="section-card"><div class="section-title"><div><p class="eyebrow">THE DETAILS THAT KEEP THINGS MOVING</p><h2>Store settings</h2><p class="section-description">Add your real payment number and contact details before taking customer orders.</p></div></div><form id="settings-form" class="form-grid">
+            <div class="brand-identity-card form-wide">
+              <div class="brand-identity-copy"><p class="eyebrow">MAKE IT YOURS</p><h3>Logo & brand color</h3><p>Upload your logo and choose a color that fits it. These update the storefront header, footer, and accent details.</p></div>
+              <div class="brand-identity-controls">
+                <label class="logo-upload-field"><span>Store logo</span><input id="brand-logo-file" name="brand_logo_file" type="file" accept="image/jpeg,image/png,image/webp,image/avif" /><small>PNG, JPG, WebP or AVIF · transparent PNG recommended · up to 5 MB</small></label>
+                <label class="brand-color-field"><span>Accent color</span><span class="color-input-wrap"><input id="brand-color-input" name="brand_color" type="color" value="#d4f33c" /><span id="brand-color-value">#D4F33C</span></span></label>
+                <label class="checkbox-label remove-logo-option"><input name="remove_logo" type="checkbox" /> Use text logo instead</label>
+              </div>
+              <div class="brand-preview-card">
+                <span class="preview-kicker">STOREFRONT PREVIEW</span>
+                <div class="brand-preview-mark"><img id="brand-logo-preview" alt="Store logo preview" hidden /><span id="brand-logo-placeholder">RELAXBD</span></div>
+                <span class="brand-preview-caption" id="brand-logo-status">Your logo appears in the header and footer.</span>
+              </div>
+            </div>
             <label>Contact phone<input name="contact_phone" type="tel" maxlength="32" required /></label><label>Contact email<input name="contact_email" type="email" maxlength="150" required /></label>
             <label>bKash number (Send Money)<input name="bkash_number" type="tel" maxlength="32" placeholder="Your bKash merchant/personal number" /></label><label>WhatsApp number<input name="whatsapp_number" type="tel" maxlength="32" /></label>
             <label>Facebook Page URL<input name="facebook_url" type="url" maxlength="255" placeholder="https://www.facebook.com/your-page" /></label>

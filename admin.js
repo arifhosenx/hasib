@@ -23,6 +23,8 @@ const settingsDefaults = {
   story_image_alt: "Streetwear look photographed outdoors",
   contact_phone: "+8801305827996",
   contact_email: "hello@ornix.com.bd",
+  brand_logo_url: "",
+  brand_color: "#d4f33c",
   facebook_url: "",
   bkash_number: "",
   whatsapp_number: "",
@@ -55,6 +57,8 @@ let customerPage = 0;
 let customerCount = 0;
 let toastTimer;
 let productImagePreviewUrl = "";
+let brandLogoPreviewUrl = "";
+let currentBrandLogoURL = "";
 
 const html = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
@@ -680,7 +684,52 @@ async function loadStoreContent() {
   const store = { ...settingsDefaults, ...(data?.value || {}) };
   fillForm(document.querySelector("#content-form"), store);
   fillForm(document.querySelector("#settings-form"), store);
+  const colorInput = document.querySelector("#brand-color-input");
+  colorInput.value = /^#[\da-f]{6}$/i.test(store.brand_color) ? store.brand_color : settingsDefaults.brand_color;
+  updateBrandColorPreview(colorInput.value);
+  currentBrandLogoURL = safeImage(store.brand_logo_url);
+  updateBrandLogoPreview(store.brand_logo_url);
+  document.querySelector("#brand-logo-file").value = "";
+  document.querySelector("#brand-logo-status").textContent = store.brand_logo_url
+    ? "Current logo is live. Choose another to replace it."
+    : "Your logo appears in the header and footer.";
+  document.querySelector("#settings-form").elements.remove_logo.checked = false;
   renderFaqFields(store.faqs);
+}
+
+function updateBrandColorPreview(color) {
+  document.querySelector("#brand-color-value").textContent = color.toUpperCase();
+  const preview = document.querySelector(".brand-preview-mark");
+  preview.style.backgroundColor = color;
+  const channels = color.match(/[\da-f]{2}/gi).map((channel) => parseInt(channel, 16) / 255);
+  const luminance = channels.map((channel) => channel <= .04045 ? channel / 12.92 : ((channel + .055) / 1.055) ** 2.4)
+    .reduce((total, channel, index) => total + channel * [.2126, .7152, .0722][index], 0);
+  preview.style.color = luminance > .179 ? "#171916" : "#fffefb";
+}
+
+function clearBrandLogoPreview() {
+  if (brandLogoPreviewUrl) URL.revokeObjectURL(brandLogoPreviewUrl);
+  brandLogoPreviewUrl = "";
+}
+
+function updateBrandLogoPreview(src) {
+  const image = document.querySelector("#brand-logo-preview");
+  const placeholder = document.querySelector("#brand-logo-placeholder");
+  const validSrc = safeImage(src);
+  image.onerror = () => {
+    image.hidden = true;
+    placeholder.hidden = false;
+    document.querySelector("#brand-logo-status").textContent = "Logo preview failed. Try another image.";
+  };
+  if (!validSrc) {
+    image.removeAttribute("src");
+    image.hidden = true;
+    placeholder.hidden = false;
+    return;
+  }
+  image.src = validSrc;
+  image.hidden = false;
+  placeholder.hidden = true;
 }
 
 function renderFaqFields(faqs = []) {
@@ -748,7 +797,8 @@ async function saveContent(event) {
 
 async function saveStoreSettings(event) {
   event.preventDefault();
-  const form = new FormData(event.currentTarget);
+  const formElement = event.currentTarget;
+  const form = new FormData(formElement);
   const values = { ...settingsDefaults };
   const existing = await supabaseClient.from("site_settings").select("value").eq("key", "store").maybeSingle();
   if (existing.error) {
@@ -762,8 +812,13 @@ async function saveStoreSettings(event) {
   values.facebook_url = String(form.get("facebook_url") || "").trim();
   values.bkash_number = String(form.get("bkash_number") || "").trim();
   values.whatsapp_number = String(form.get("whatsapp_number") || "").trim();
+  values.brand_color = String(form.get("brand_color") || "").trim();
   values.delivery_fee = Number(form.get("delivery_fee"));
   values.free_shipping_threshold = Number(form.get("free_shipping_threshold"));
+  if (!/^#[\da-f]{6}$/i.test(values.brand_color)) {
+    document.querySelector("#settings-form-error").textContent = "Choose a valid six-digit brand color.";
+    return;
+  }
   if (![values.delivery_fee, values.free_shipping_threshold].every((number) => Number.isSafeInteger(number) && number >= 0)) {
     document.querySelector("#settings-form-error").textContent = "Delivery fee and free-delivery threshold must be whole numbers of zero or more.";
     return;
@@ -786,8 +841,40 @@ async function saveStoreSettings(event) {
     return;
   }
   values.whatsapp_number = whatsappDigits;
+  const logoFile = formElement.elements.brand_logo_file.files[0];
+  const removeLogo = form.has("remove_logo");
+  if (logoFile && (!["image/jpeg", "image/png", "image/webp", "image/avif"].includes(logoFile.type) || logoFile.size > 5 * 1024 * 1024)) {
+    document.querySelector("#settings-form-error").textContent = "Choose a JPG, PNG, WebP or AVIF logo up to 5 MB.";
+    return;
+  }
+  let uploadedLogoPath = "";
+  if (logoFile) {
+    const extension = ({ "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/avif": "avif" })[logoFile.type];
+    uploadedLogoPath = `branding/${crypto.randomUUID()}.${extension}`;
+    document.querySelector("#brand-logo-status").textContent = "Uploading your logo…";
+    const { error: uploadError } = await supabaseClient.storage.from("product-images").upload(uploadedLogoPath, logoFile, {
+      cacheControl: "31536000",
+      contentType: logoFile.type,
+      upsert: false
+    });
+    if (uploadError) {
+      console.error("Could not upload store logo.", uploadError);
+      document.querySelector("#brand-logo-status").textContent = "Logo upload failed.";
+      document.querySelector("#settings-form-error").textContent = `Could not upload the logo: ${uploadError.message}. Confirm the product-images storage bucket is set up from supabase/schema.sql.`;
+      return;
+    }
+    values.brand_logo_url = supabaseClient.storage.from("product-images").getPublicUrl(uploadedLogoPath).data.publicUrl;
+  } else if (removeLogo) {
+    values.brand_logo_url = "";
+  } else {
+    values.brand_logo_url = currentBrandLogoURL;
+  }
   if (await saveStoreValues(values, "settings-form-error", "Store settings saved.")) {
+    clearBrandLogoPreview();
     await loadStoreContent();
+  } else if (uploadedLogoPath) {
+    const { error: cleanupError } = await supabaseClient.storage.from("product-images").remove([uploadedLogoPath]);
+    if (cleanupError) console.error("Could not remove the logo uploaded for the failed settings save.", cleanupError);
   }
 }
 
@@ -908,6 +995,32 @@ function bindAdminEvents() {
   });
   document.querySelector("#content-form").addEventListener("submit", saveContent);
   document.querySelector("#settings-form").addEventListener("submit", saveStoreSettings);
+  document.querySelector("#brand-logo-file").addEventListener("change", (event) => {
+    const file = event.currentTarget.files[0];
+    const removeLogo = document.querySelector("#settings-form").elements.remove_logo;
+    removeLogo.checked = false;
+    if (!file) return;
+    clearBrandLogoPreview();
+    brandLogoPreviewUrl = URL.createObjectURL(file);
+    updateBrandLogoPreview(brandLogoPreviewUrl);
+    document.querySelector("#brand-logo-status").textContent = `${file.name} · ${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+  });
+  document.querySelector("#settings-form").elements.remove_logo.addEventListener("change", (event) => {
+    if (event.currentTarget.checked) {
+      document.querySelector("#brand-logo-file").value = "";
+      clearBrandLogoPreview();
+      updateBrandLogoPreview("");
+      document.querySelector("#brand-logo-status").textContent = "Text logo will be used after saving.";
+      return;
+    }
+    if (!document.querySelector("#brand-logo-file").files.length) {
+      updateBrandLogoPreview(currentBrandLogoURL);
+      document.querySelector("#brand-logo-status").textContent = currentBrandLogoURL
+        ? "Current logo is live. Choose another to replace it."
+        : "Your logo appears in the header and footer.";
+    }
+  });
+  document.querySelector("#brand-color-input").addEventListener("input", (event) => updateBrandColorPreview(event.currentTarget.value));
   document.querySelector("#add-faq").addEventListener("click", () => {
     const faqs = collectFaqFields();
     faqs.push({ question: "", answer: "" });

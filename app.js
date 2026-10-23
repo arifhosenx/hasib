@@ -112,6 +112,8 @@ const defaultStore = {
   story_image: "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=1200&q=85",
   contact_phone: "+8801305827996",
   contact_email: "hello@ornix.com.bd",
+  brand_logo_url: "",
+  brand_color: "#d4f33c",
   facebook_url: "",
   bkash_number: "",
   whatsapp_number: "",
@@ -193,6 +195,27 @@ function renderCategories() {
 
 function applyStoreContent(settings = {}) {
   store = { ...defaultStore, ...settings };
+  const logoURL = safeImageURL(store.brand_logo_url);
+  [document.querySelector("#header-brand-logo"), document.querySelector("#footer-brand-logo")].forEach((logo) => {
+    if (!logo) return;
+    const wordmark = logo.closest(".wordmark");
+    const wordmarkText = wordmark.querySelector(".wordmark-text");
+    logo.onerror = () => {
+      logo.hidden = true;
+      wordmarkText.hidden = false;
+    };
+    logo.hidden = !logoURL;
+    wordmarkText.hidden = Boolean(logoURL);
+    if (logoURL) logo.src = logoURL;
+    else logo.removeAttribute("src");
+  });
+  if (/^#[\da-f]{6}$/i.test(store.brand_color)) {
+    document.documentElement.style.setProperty("--acid", store.brand_color);
+    const channels = store.brand_color.match(/[\da-f]{2}/gi).map((channel) => parseInt(channel, 16) / 255);
+    const luminance = channels.map((channel) => channel <= .04045 ? channel / 12.92 : ((channel + .055) / 1.055) ** 2.4)
+      .reduce((total, channel, index) => total + channel * [.2126, .7152, .0722][index], 0);
+    document.documentElement.style.setProperty("--accent-ink", luminance > .179 ? "#171916" : "#fffefb");
+  }
   [
     ["announcement-text", "announcement"],
     ["announcement-detail-text", "announcement_detail"],

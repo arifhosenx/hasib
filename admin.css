@@ -178,6 +178,24 @@ input[type="checkbox"] { width: 15px; min-height: 15px; height: 15px; accent-col
 .faq-item { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); display: grid; grid-template-columns: 1fr 1fr 30px; gap: 10px; }
 .faq-item > button { align-self: end; height: 38px; border: 1px solid var(--line); background: white; color: var(--red); font-size: 16px; cursor: pointer; }
 .payment-warning { margin: 0; border-left-color: #b59642; background: #fbf6e6; color: #5f512f; }
+.brand-identity-card { padding: 18px; display: grid; grid-template-columns: minmax(170px, .8fr) minmax(230px, 1fr) minmax(180px, .75fr); align-items: center; gap: 20px; border: 1px solid var(--line); background: #fbfaf6; }
+.brand-identity-copy h3 { margin: 7px 0; font: 600 20px var(--display); letter-spacing: -.04em; }
+.brand-identity-copy > p:last-child { max-width: 300px; margin: 0; color: var(--muted); font-size: 9px; line-height: 1.65; }
+.brand-identity-controls { min-width: 0; display: grid; gap: 12px; }
+.logo-upload-field { min-width: 0; display: grid; gap: 7px; }
+.logo-upload-field > span, .brand-color-field > span:first-child { font-size: 10px; font-weight: 700; }
+.logo-upload-field input[type="file"] { min-height: 39px; padding: 7px; background: white; font-size: 9px; }
+.logo-upload-field small { color: var(--muted); font-size: 8px; font-weight: 400; line-height: 1.5; }
+.brand-color-field { display: grid; gap: 7px; }
+.color-input-wrap { display: flex; align-items: center; gap: 9px; }
+.color-input-wrap input[type="color"] { width: 42px; min-height: 35px; height: 35px; padding: 3px; cursor: pointer; }
+.color-input-wrap > span { color: var(--muted); font: 600 9px var(--body); letter-spacing: .08em; }
+.remove-logo-option { width: fit-content; font-size: 9px; }
+.brand-preview-card { min-height: 143px; padding: 12px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid var(--line); background: white; }
+.brand-preview-mark { width: 100%; min-height: 68px; display: grid; place-items: center; }
+.brand-preview-mark img { width: auto; max-width: 100%; max-height: 58px; object-fit: contain; }
+.brand-preview-mark > span { font: 700 23px/.95 var(--display); letter-spacing: -.08em; }
+.brand-preview-caption { color: var(--muted); font-size: 8px; text-align: center; line-height: 1.4; }
 .confirm-modal { padding: 20px; position: fixed; inset: 0; z-index: 99; display: grid; place-items: center; background: #17191688; }
 .confirm-modal > div { width: min(390px, 100%); padding: 27px; background: var(--surface); box-shadow: 0 20px 60px #0002; }
 .confirm-modal h2 { margin: 9px 0; font: 600 26px var(--display); letter-spacing: -.05em; }
@@ -221,6 +239,8 @@ input[type="checkbox"] { width: 15px; min-height: 15px; height: 15px; accent-col
   .form-grid { grid-template-columns: 1fr; gap: 13px; }
   .form-wide { grid-column: auto; }
   .form-actions.form-wide, .faq-editor.form-wide, .form-error.form-wide { grid-column: 1; }
+  .brand-identity-card { grid-template-columns: 1fr; gap: 15px; }
+  .brand-preview-card { min-height: 128px; }
   .product-editor-heading { align-items: flex-start; }
   .product-form-layout { grid-template-columns: 1fr; gap: 17px; }
   .product-fields { grid-template-columns: 1fr; gap: 13px; }

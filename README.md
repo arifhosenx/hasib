@@ -51,6 +51,7 @@ bKash orders use **Send Money**: the customer pays the configured number, then s
 
 - Add/edit and publish/archive products; upload product photos or use image URLs, and set category, price, sale price, and stock.
 - Create, publish, and archive storefront categories and see low-stock items.
+- In **Admin → Store settings → Logo & brand color**, choose a transparent PNG (recommended) or JPG/WebP/AVIF logo up to 5 MB, select the matching accent color, then save. The logo appears in the storefront header and footer; use **Use text logo instead** to remove it.
 - Review orders and customer contact/delivery details; update fulfilment state.
 - Review submitted bKash transaction IDs and explicitly approve/reject payment; cancelled orders automatically return stock.
 - Create/pause promotion codes with a percentage or fixed discount, minimum spend, and usage limit.
