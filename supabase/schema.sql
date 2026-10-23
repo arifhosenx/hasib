@@ -22,6 +22,10 @@ create table if not exists public.products (
   compare_at_price integer check (compare_at_price is null or compare_at_price > price),
   badge text not null default 'Just in',
   image text not null,
+  images jsonb not null default '[]'::jsonb check (jsonb_typeof(images) = 'array'),
+  code text not null default '',
+  size_stock jsonb not null default '{}'::jsonb check (jsonb_typeof(size_stock) = 'object'),
+  size_chart jsonb not null default '{}'::jsonb check (jsonb_typeof(size_chart) = 'object'),
   alt text not null default '',
   stock integer not null default 0 check (stock >= 0),
   active boolean not null default true,
@@ -101,8 +105,17 @@ create table if not exists public.order_items (
   subtitle text not null default '',
   quantity integer not null check (quantity > 0),
   unit_price integer not null check (unit_price >= 0),
+  size text check (size is null or size in ('M', 'L', 'XL')),
   created_at timestamptz not null default now()
 );
+
+alter table public.products
+  add column if not exists images jsonb not null default '[]'::jsonb,
+  add column if not exists code text not null default '',
+  add column if not exists size_stock jsonb not null default '{}'::jsonb,
+  add column if not exists size_chart jsonb not null default '{}'::jsonb;
+alter table public.order_items
+  add column if not exists size text check (size is null or size in ('M', 'L', 'XL'));
 
 create index if not exists products_active_category_idx
   on public.products (active, category, featured desc, created_at desc);
@@ -271,7 +284,16 @@ as $$
 begin
   if new.status = 'cancelled' and old.status <> 'cancelled' and not old.inventory_restocked then
     update public.products as p
-    set stock = p.stock + oi.quantity
+    set stock = p.stock + oi.quantity,
+        size_stock = case
+          when oi.size is null then p.size_stock
+          else jsonb_set(
+            coalesce(p.size_stock, '{}'::jsonb),
+            array[oi.size],
+            to_jsonb(coalesce((p.size_stock ->> oi.size)::integer, 0) + oi.quantity),
+            true
+          )
+        end
     from public.order_items as oi
     where oi.order_id = new.id
       and oi.product_id = p.id;
@@ -361,14 +383,15 @@ begin
   end if;
   if exists (
     select 1
-    from jsonb_to_recordset(p_items) as item(product_id uuid, quantity integer)
+    from jsonb_to_recordset(p_items) as item(product_id uuid, size text, quantity integer)
     where item.product_id is null
       or item.quantity is null
       or item.quantity < 1
       or item.quantity > 20
+      or (item.size is not null and item.size not in ('M', 'L', 'XL'))
   ) or (
-    select count(*) <> count(distinct item.product_id)
-    from jsonb_to_recordset(p_items) as item(product_id uuid, quantity integer)
+    select count(*) <> count(distinct (item.product_id, coalesce(item.size, '')))
+    from jsonb_to_recordset(p_items) as item(product_id uuid, size text, quantity integer)
   ) then
     raise exception 'Your basket contains an invalid item or quantity';
   end if;
@@ -385,8 +408,16 @@ begin
   v_free_shipping_threshold := nullif((v_settings ->> 'free_shipping_threshold')::integer, 0);
 
   for v_line in
-    select p.id as product_id, p.name, p.subtitle, p.price, p.stock, item.quantity
-    from jsonb_to_recordset(p_items) as item(product_id uuid, quantity integer)
+    select p.id as product_id, p.name, p.subtitle, p.price, p.stock, item.quantity, item.size,
+      case
+        when item.size is null then p.stock
+        when coalesce(p.size_stock, '{}'::jsonb) ? item.size then coalesce((p.size_stock ->> item.size)::integer, 0)
+        when coalesce(p.size_stock, '{}'::jsonb) <> '{}'::jsonb then 0
+        when item.size = 'M' then floor(p.stock / 3.0)::integer + case when p.stock % 3 > 0 then 1 else 0 end
+        when item.size = 'L' then floor(p.stock / 3.0)::integer + case when p.stock % 3 > 1 then 1 else 0 end
+        else floor(p.stock / 3.0)::integer
+      end as variant_stock
+    from jsonb_to_recordset(p_items) as item(product_id uuid, size text, quantity integer)
     join public.products as p on p.id = item.product_id
     where p.active
     order by p.id
@@ -395,13 +426,27 @@ begin
     if v_line.stock < v_line.quantity then
       raise exception 'Not enough stock for "%"', v_line.name;
     end if;
+    if v_line.size is not null and v_line.variant_stock < v_line.quantity then
+      raise exception 'Not enough stock for size % of "%"', v_line.size, v_line.name;
+    end if;
     v_subtotal := v_subtotal + (v_line.price * v_line.quantity);
   end loop;
 
+  if exists (
+    select 1
+    from jsonb_to_recordset(p_items) as item(product_id uuid, size text, quantity integer)
+    group by item.product_id
+    having sum(item.quantity) > (
+      select p.stock from public.products as p where p.id = item.product_id
+    )
+  ) then
+    raise exception 'Not enough stock for one or more products in your basket';
+  end if;
+
   select count(*) into v_item_count
-  from jsonb_to_recordset(p_items) as item(product_id uuid, quantity integer);
+  from jsonb_to_recordset(p_items) as item(product_id uuid, size text, quantity integer);
   if (select count(*) from public.products p
-      join jsonb_to_recordset(p_items) as item(product_id uuid, quantity integer)
+      join jsonb_to_recordset(p_items) as item(product_id uuid, size text, quantity integer)
         on item.product_id = p.id
       where p.active) <> v_item_count then
     raise exception 'One or more items in your basket are no longer available';
@@ -458,15 +503,41 @@ begin
   );
 
   for v_line in
-    select p.id as product_id, p.name, p.subtitle, p.price, item.quantity
-    from jsonb_to_recordset(p_items) as item(product_id uuid, quantity integer)
+    select p.id as product_id, p.name, p.subtitle, p.price, p.stock, item.quantity, item.size,
+      case
+        when item.size is null then p.stock
+        when coalesce(p.size_stock, '{}'::jsonb) ? item.size then coalesce((p.size_stock ->> item.size)::integer, 0)
+        when coalesce(p.size_stock, '{}'::jsonb) <> '{}'::jsonb then 0
+        when item.size = 'M' then floor(p.stock / 3.0)::integer + case when p.stock % 3 > 0 then 1 else 0 end
+        when item.size = 'L' then floor(p.stock / 3.0)::integer + case when p.stock % 3 > 1 then 1 else 0 end
+        else floor(p.stock / 3.0)::integer
+      end as variant_stock
+    from jsonb_to_recordset(p_items) as item(product_id uuid, size text, quantity integer)
     join public.products as p on p.id = item.product_id
     where p.active
     order by p.id
   loop
-    update public.products set stock = stock - v_line.quantity where id = v_line.product_id;
-    insert into public.order_items (order_id, product_id, product_name, subtitle, quantity, unit_price)
-    values (v_order_id, v_line.product_id, v_line.name, v_line.subtitle, v_line.quantity, v_line.price);
+    update public.products
+    set stock = stock - v_line.quantity,
+        size_stock = case
+          when v_line.size is null then size_stock
+          else jsonb_set(
+            case
+              when coalesce(size_stock, '{}'::jsonb) <> '{}'::jsonb then size_stock
+              else jsonb_build_object(
+                'M', floor(stock / 3.0)::integer + case when stock % 3 > 0 then 1 else 0 end,
+                'L', floor(stock / 3.0)::integer + case when stock % 3 > 1 then 1 else 0 end,
+                'XL', floor(stock / 3.0)::integer
+              )
+            end,
+            array[v_line.size],
+            to_jsonb(v_line.variant_stock - v_line.quantity),
+            true
+          )
+        end
+    where id = v_line.product_id;
+    insert into public.order_items (order_id, product_id, product_name, subtitle, quantity, unit_price, size)
+    values (v_order_id, v_line.product_id, v_line.name, v_line.subtitle, v_line.quantity, v_line.price, v_line.size);
   end loop;
 
   if v_has_promotion then

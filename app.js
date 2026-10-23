@@ -1,86 +1,4 @@
-let products = [
-  {
-    id: "core-tee-black",
-    name: "Core heavyweight tee",
-    subtitle: "Black · Relaxed fit",
-    category: "t-shirts",
-    price: 1290,
-    badge: "Bestseller",
-    image: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=85",
-    alt: "White heavyweight cotton t-shirt"
-  },
-  {
-    id: "daybreak-shirt",
-    name: "Daybreak overshirt",
-    subtitle: "Natural · Boxy fit",
-    category: "shirts",
-    price: 2190,
-    badge: "Just in",
-    image: "https://images.unsplash.com/photo-1598033129183-c4f50c736f10?auto=format&fit=crop&w=900&q=85",
-    alt: "Neutral overshirt on a hanger"
-  },
-  {
-    id: "after-hours-tee",
-    name: "After hours graphic tee",
-    subtitle: "Charcoal · Relaxed fit",
-    category: "t-shirts",
-    price: 1490,
-    badge: "Just in",
-    image: "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=900&q=85",
-    alt: "Dark graphic t-shirt styled for the street"
-  },
-  {
-    id: "utility-cargo",
-    name: "Everyday utility cargo",
-    subtitle: "Olive · Straight leg",
-    category: "bottoms",
-    price: 2890,
-    badge: "Limited",
-    image: "https://images.unsplash.com/photo-1517445312882-bc9910d016b7?auto=format&fit=crop&w=900&q=85",
-    alt: "Olive utility trousers"
-  },
-  {
-    id: "form-shirt",
-    name: "Form camp-collar shirt",
-    subtitle: "Stone · Easy fit",
-    category: "shirts",
-    price: 1990,
-    badge: "Just in",
-    image: "https://images.unsplash.com/photo-1603252109303-2751441dd157?auto=format&fit=crop&w=900&q=85",
-    alt: "Casual short-sleeve shirt"
-  },
-  {
-    id: "weekend-tote",
-    name: "Weekend carryall tote",
-    subtitle: "Natural · Heavy canvas",
-    category: "accessories",
-    price: 790,
-    badge: "Small batch",
-    image: "https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=900&q=85",
-    alt: "Everyday canvas carryall bag"
-  },
-  {
-    id: "studio-tee",
-    name: "Studio boxy tee",
-    subtitle: "Off-white · Boxy fit",
-    category: "t-shirts",
-    price: 1390,
-    badge: "Just in",
-    image: "https://images.unsplash.com/photo-1527719327859-c6ce80353573?auto=format&fit=crop&w=900&q=85",
-    alt: "Off-white boxy cotton t-shirt"
-  },
-  {
-    id: "weekender-short",
-    name: "Weekender easy short",
-    subtitle: "Washed black · Easy fit",
-    category: "bottoms",
-    price: 1590,
-    oldPrice: 1890,
-    badge: "−16%",
-    image: "https://images.unsplash.com/photo-1591195853828-11db59a44f6b?auto=format&fit=crop&w=900&q=85",
-    alt: "Relaxed everyday shorts"
-  }
-];
+let products = [...(window.RELAXBD_PRODUCTS || [])];
 
 const defaultCategories = [
   { slug: "t-shirts", name: "T-shirts" },
@@ -139,6 +57,25 @@ const safeImageURL = (value) => {
     return "";
   }
 };
+const distributeStock = (stock) => {
+  const total = Math.max(0, Number(stock) || 0);
+  const base = Math.floor(total / 3);
+  const remainder = total % 3;
+  return { M: base + (remainder > 0 ? 1 : 0), L: base + (remainder > 1 ? 1 : 0), XL: base };
+};
+const defaultProductDetails = (product) => {
+  const detail = (window.RELAXBD_PRODUCTS || []).find((item) => item.id === product.id || (item.name === product.name && item.category === product.category));
+  return {
+    ...detail,
+    ...product,
+    code: product.code || detail?.code || String(product.id).slice(0, 8).toUpperCase(),
+    images: Array.isArray(product.images) && product.images.length ? product.images : (detail?.images || [product.image]),
+    sizeStock: product.size_stock && Object.keys(product.size_stock).length
+      ? product.size_stock
+      : (detail?.sizeStock || distributeStock(product.stock)),
+    sizeChart: product.size_chart || detail?.sizeChart || { chest: { M: 40, L: 42, XL: 44 }, length: { M: 28, L: 29, XL: 30 } }
+  };
+};
 const grid = document.querySelector("#product-grid");
 const countLabel = document.querySelector(".product-count");
 const emptyState = document.querySelector(".empty-state");
@@ -171,7 +108,9 @@ function restoreCart() {
     if (!Array.isArray(saved)) return;
     saved.forEach((item) => {
       if (item?.product?.id && Number.isInteger(item.quantity) && item.quantity > 0 && item.quantity <= 20) {
-        cart.set(item.product.id, { product: item.product, quantity: item.quantity });
+        const size = ["M", "L", "XL"].includes(item.size) ? item.size : "";
+        const key = `${item.product.id}:${size}`;
+        cart.set(key, { product: item.product, quantity: item.quantity, size });
       }
     });
   } catch (error) {
@@ -299,7 +238,7 @@ function safeWhatsAppURL(value) {
 async function loadStoreData() {
   if (!supabaseClient) return;
   const [productResult, categoryResult, settingsResult] = await Promise.all([
-    supabaseClient.from("products").select("id,name,subtitle,category,price,compare_at_price,badge,image,alt,stock,featured,created_at").eq("active", true).order("featured", { ascending: false }).order("created_at", { ascending: false }),
+    supabaseClient.from("products").select("id,name,subtitle,category,price,compare_at_price,badge,image,images,code,size_stock,size_chart,alt,stock,featured,created_at").eq("active", true).order("featured", { ascending: false }).order("created_at", { ascending: false }),
     supabaseClient.from("categories").select("slug,name").eq("active", true).order("name"),
     supabaseClient.from("site_settings").select("value").eq("key", "store").maybeSingle()
   ]);
@@ -308,21 +247,25 @@ async function loadStoreData() {
     showToast("Live catalog unavailable. Showing preview products.");
   } else {
     products = productResult.data.map((product) => ({
-      ...product,
-      oldPrice: product.compare_at_price,
-      image: safeImageURL(product.image)
+      ...defaultProductDetails({ ...product, oldPrice: product.compare_at_price, image: safeImageURL(product.image) }),
+      images: (Array.isArray(product.images) && product.images.length ? product.images : [product.image]).map(safeImageURL).filter(Boolean),
+      sizeStock: product.size_stock && Object.keys(product.size_stock).length ? product.size_stock : distributeStock(product.stock),
+      sizeChart: product.size_chart || (window.RELAXBD_PRODUCTS || []).find((item) => item.name === product.name)?.sizeChart || { chest: { M: 40, L: 42, XL: 44 }, length: { M: 28, L: 29, XL: 30 } }
     }));
-    cart.forEach((item, productId) => {
-      const latest = products.find((product) => product.id === productId);
+    [...cart.entries()].forEach(([key, item]) => {
+      const latest = products.find((product) => product.id === item.product.id);
       if (!latest) {
-        cart.delete(productId);
+        cart.delete(key);
       } else {
-        cart.set(productId, {
-          ...item,
-          product: latest,
-          quantity: Math.min(item.quantity, latest.stock, 20)
-        });
-        if (latest.stock < 1) cart.delete(productId);
+        const size = item.size || "";
+        const available = size
+          ? Number(latest.sizeStock?.[size]) || 0
+          : (Number.isInteger(latest.stock) ? latest.stock : 20);
+        const nextKey = `${latest.id}:${size}`;
+        cart.delete(key);
+        if (available > 0) {
+          cart.set(nextKey, { ...item, product: latest, quantity: Math.min(item.quantity, available, 20) });
+        }
       }
     });
   }
@@ -364,6 +307,7 @@ function renderProducts() {
   emptyState.hidden = visible.length !== 0;
   grid.innerHTML = visible.map((product) => `
     <article class="product-card">
+      <a class="product-card-link" href="product.html?id=${encodeURIComponent(product.id)}" aria-label="View ${escapeHTML(product.name)}"></a>
       <div class="product-image-wrap">
         <img class="product-image" src="${escapeHTML(safeImageURL(product.image))}" alt="${escapeHTML(product.alt)}" loading="lazy" />
         <span class="product-badge ${product.oldPrice ? "sale" : ""}">${escapeHTML(product.badge)}</span>
@@ -386,28 +330,28 @@ function cartQuantity() {
 }
 
 function renderCart() {
-  const items = [...cart.values()];
+  const items = [...cart.entries()];
   const itemCount = cartQuantity();
   document.querySelector(".cart-count").textContent = itemCount;
   document.querySelector(".panel-count").textContent = `(${itemCount})`;
   document.querySelector(".cart-empty").hidden = items.length > 0;
   document.querySelector(".cart-footer").hidden = items.length === 0;
-  document.querySelector(".cart-items").innerHTML = items.map(({ product, quantity }) => `
+  document.querySelector(".cart-items").innerHTML = items.map(([key, { product, quantity, size }]) => `
     <article class="cart-item">
       <img src="${escapeHTML(safeImageURL(product.image))}" alt="" />
       <div>
         <h3>${escapeHTML(product.name)}</h3>
-        <p>${escapeHTML(product.subtitle)}</p>
+        <p>${escapeHTML(product.subtitle)}${size ? ` · Size ${escapeHTML(size)}` : ""}</p>
         <div class="quantity-control" aria-label="Quantity for ${escapeHTML(product.name)}">
-          <button type="button" data-quantity="${escapeHTML(product.id)}" data-change="-1" aria-label="Remove one">−</button>
+          <button type="button" data-quantity="${escapeHTML(key)}" data-change="-1" aria-label="Remove one">−</button>
           <span>${quantity}</span>
-          <button type="button" data-quantity="${escapeHTML(product.id)}" data-change="1" aria-label="Add one">+</button>
+          <button type="button" data-quantity="${escapeHTML(key)}" data-change="1" aria-label="Add one">+</button>
         </div>
       </div>
       <span class="cart-item-price">${formatPrice(product.price * quantity)}</span>
     </article>
   `).join("");
-  const subtotal = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const subtotal = items.reduce((sum, [, item]) => sum + item.product.price * item.quantity, 0);
   document.querySelector(".cart-subtotal").textContent = formatPrice(subtotal);
   persistCart();
   renderCheckoutTotals();
@@ -432,8 +376,8 @@ function renderCheckoutTotals() {
   document.querySelector("#checkout-discount").textContent = `−${formatPrice(discount)}`;
   document.querySelector("#checkout-delivery").textContent = formatPrice(delivery);
   document.querySelector("#checkout-total").textContent = formatPrice(subtotal - discount + delivery);
-  document.querySelector("#checkout-items").innerHTML = [...cart.values()].map(({ product, quantity }) => `
-    <div class="checkout-item"><span>${escapeHTML(product.name)} × ${quantity}</span><strong>${formatPrice(product.price * quantity)}</strong></div>
+  document.querySelector("#checkout-items").innerHTML = [...cart.values()].map(({ product, quantity, size }) => `
+    <div class="checkout-item"><span>${escapeHTML(product.name)}${size ? ` · ${escapeHTML(size)}` : ""} × ${quantity}</span><strong>${formatPrice(product.price * quantity)}</strong></div>
   `).join("");
 }
 
@@ -502,8 +446,9 @@ async function placeOrder(event) {
       p_address: String(formData.get("address")),
       p_payment_method: paymentMethod,
       p_transaction_id: String(formData.get("transactionId") || ""),
-      p_items: [...cart.values()].map(({ product, quantity }) => ({
+      p_items: [...cart.values()].map(({ product, quantity, size }) => ({
         product_id: product.id,
+        size: size || null,
         quantity
       })),
       p_promo_code: appliedPromotion?.code || null,
@@ -572,11 +517,12 @@ function openPanel(panel) {
   if (panel === searchPanel) window.setTimeout(() => searchInput.focus(), 250);
 }
 
-function addToCart(productId) {
+function addToCart(productId, size = "") {
   const product = products.find((item) => item.id === productId);
   if (!product) return;
-  const existing = cart.get(productId);
-  const availableStock = Number.isInteger(product.stock) ? product.stock : 20;
+  const key = `${productId}:${size}`;
+  const existing = cart.get(key);
+  const availableStock = size ? Number(product.sizeStock?.[size]) || 0 : (Number.isInteger(product.stock) ? product.stock : 20);
   if (availableStock < 1) {
     showToast(`${product.name} is currently sold out`);
     return;
@@ -585,7 +531,7 @@ function addToCart(productId) {
     showToast(`Only ${availableStock} available for ${product.name}`);
     return;
   }
-  cart.set(productId, { product, quantity: existing ? existing.quantity + 1 : 1 });
+  cart.set(key, { product, quantity: existing ? existing.quantity + 1 : 1, size });
   renderCart();
   showToast(`${product.name} added to your bag`);
 }
@@ -620,17 +566,18 @@ grid.addEventListener("click", (event) => {
 document.querySelector(".cart-items").addEventListener("click", (event) => {
   const button = event.target.closest("[data-quantity]");
   if (!button) return;
-  const item = cart.get(button.dataset.quantity);
+  const key = button.dataset.quantity;
+  const item = cart.get(key);
   if (!item) return;
   const quantity = item.quantity + Number(button.dataset.change);
-  if (quantity <= 0) cart.delete(button.dataset.quantity);
+  if (quantity <= 0) cart.delete(key);
   else {
-    const stockLimit = Number.isInteger(item.product.stock) ? Math.min(20, item.product.stock) : 20;
+    const stockLimit = item.size ? Number(item.product.sizeStock?.[item.size]) || 0 : (Number.isInteger(item.product.stock) ? Math.min(20, item.product.stock) : 20);
     if (quantity > stockLimit) {
       showToast(`Only ${stockLimit} available for ${item.product.name}`);
       return;
     }
-    cart.set(button.dataset.quantity, { ...item, quantity });
+    cart.set(key, { ...item, quantity });
   }
   renderCart();
 });
@@ -699,6 +646,14 @@ document.querySelector(".newsletter-form").addEventListener("submit", (event) =>
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") closePanels();
 });
+const cartMode = new URLSearchParams(window.location.search);
+if (cartMode.get("checkout") === "1" || cartMode.get("bag") === "open") {
+  window.addEventListener("load", () => {
+    if (!cart.size) return;
+    openPanel(cartMode.get("checkout") === "1" ? checkoutPanel : cartPanel);
+    if (cartMode.get("checkout") === "1") updatePaymentMethod();
+  }, { once: true });
+}
 
 renderProducts();
 renderCategories();

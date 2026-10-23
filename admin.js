@@ -205,7 +205,7 @@ async function loadProducts() {
     return loadProducts();
   }
   const paged = await supabaseClient.from("products")
-    .select("id,name,subtitle,category,price,compare_at_price,badge,image,alt,stock,active,featured,created_at", { count: "exact" })
+    .select("id,name,subtitle,category,price,compare_at_price,badge,image,alt,stock,size_stock,active,featured,created_at", { count: "exact" })
     .order("created_at", { ascending: false })
     .range(productPage * pageSize, productPage * pageSize + pageSize - 1);
   if (paged.error) {
@@ -340,10 +340,11 @@ async function saveProduct(event) {
   const values = new FormData(form);
   const price = Number(values.get("price"));
   const compareAt = values.get("compare_at_price") === "" ? null : Number(values.get("compare_at_price"));
+  const stock = Number(values.get("stock"));
   const errorRoot = document.querySelector("#product-form-error");
   errorRoot.textContent = "";
-  if (!Number.isSafeInteger(price) || price < 0 || (compareAt !== null && (!Number.isSafeInteger(compareAt) || compareAt <= price))) {
-    errorRoot.textContent = "Enter a valid price. The compare-at price must be higher than the current price.";
+  if (!Number.isSafeInteger(price) || price < 0 || !Number.isSafeInteger(stock) || stock < 0 || (compareAt !== null && (!Number.isSafeInteger(compareAt) || compareAt <= price))) {
+    errorRoot.textContent = "Enter a valid price and whole-number stock quantity. The compare-at price must be higher than the current price.";
     return;
   }
   const imageFile = form.elements.image_file.files[0];
@@ -354,7 +355,14 @@ async function saveProduct(event) {
     subtitle: String(values.get("subtitle") || "").trim(),
     price,
     compare_at_price: compareAt,
-    stock: Number(values.get("stock")),
+    stock,
+    size_stock: (() => {
+      const existingProduct = products.find((item) => item.id === String(values.get("id") || ""));
+      if (existingProduct && existingProduct.stock === stock) return existingProduct.size_stock || {};
+      const base = Math.floor(stock / 3);
+      const remainder = stock % 3;
+      return { M: base + (remainder > 0 ? 1 : 0), L: base + (remainder > 1 ? 1 : 0), XL: base };
+    })(),
     badge: String(values.get("badge") || "Just in").trim(),
     image: imageUrl,
     alt: String(values.get("alt") || "").trim(),
@@ -521,7 +529,7 @@ function renderRecentOrders() {
 
 async function loadOrders() {
   let query = supabaseClient.from("orders")
-    .select("id,order_number,status,payment_method,payment_status,bkash_transaction_id,subtotal,discount,delivery_fee,total,customer_note,created_at,customers(full_name,phone,address),order_items(product_name,quantity)", { count: "exact" })
+    .select("id,order_number,status,payment_method,payment_status,bkash_transaction_id,subtotal,discount,delivery_fee,total,customer_note,created_at,customers(full_name,phone,address),order_items(product_name,quantity,size)", { count: "exact" })
     .order("created_at", { ascending: false });
   if (activeOrderFilter !== "all") query = query.eq("status", activeOrderFilter);
   const { data, error, count } = await query.range(orderPage * pageSize, orderPage * pageSize + pageSize - 1);
@@ -551,7 +559,7 @@ function renderOrders() {
   const paymentOptions = ["submitted", "verified", "rejected", "cash_on_delivery"];
   root.innerHTML = `<table class="data-table"><thead><tr><th>Order / items</th><th>Customer</th><th>Payment</th><th>Total</th><th>Order status</th><th>Actions</th></tr></thead><tbody>${visible.map((order) => `
     <tr data-order-row="${html(order.id)}">
-      <td><span class="table-primary">${html(order.order_number)}</span><div class="table-muted">${dateTime(order.created_at)}</div>${(order.order_items || []).map((item) => `<div class="table-muted">${html(item.product_name)} × ${item.quantity}</div>`).join("")}</td>
+      <td><span class="table-primary">${html(order.order_number)}</span><div class="table-muted">${dateTime(order.created_at)}</div>${(order.order_items || []).map((item) => `<div class="table-muted">${html(item.product_name)}${item.size ? ` · ${html(item.size)}` : ""} × ${item.quantity}</div>`).join("")}</td>
       <td>${html(order.customers?.full_name || "Customer")}<div class="table-muted">${html(order.customers?.phone || "")}</div><div class="table-muted">${html(order.customers?.address || "")}</div></td>
       <td><span class="status-pill ${statusColor(order.payment_status)}">${html(statusLabel(order.payment_status))}</span>${order.bkash_transaction_id ? `<div class="txn-id"><span>TxnID</span><strong>${html(order.bkash_transaction_id)}</strong></div>` : ""}${order.customer_note ? `<div class="table-muted">Note: ${html(order.customer_note)}</div>` : ""}</td>
       <td>${money(order.total)}<div class="table-muted">${order.payment_method === "bkash" ? "bKash" : "Cash on delivery"}</div></td>

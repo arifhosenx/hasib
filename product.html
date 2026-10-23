@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#171916" />
+    <meta name="description" content="Product details, sizing and ordering from RELAXBD." />
+    <title>Product — RELAXBD</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="product-detail.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+    <script src="config.js" defer></script>
+    <script src="products-data.js" defer></script>
+    <script src="product-detail.js" defer></script>
+  </head>
+  <body>
+    <header class="detail-header">
+      <a class="detail-wordmark" href="index.html"><span id="brand-wordmark">RELAXBD</span><img id="brand-logo" alt="RELAXBD logo" hidden /></a>
+      <a class="back-link" href="index.html#new-drops"><span aria-hidden="true">←</span> Back to the drop</a>
+      <a class="bag-link" href="index.html?bag=open"><span aria-hidden="true">▱</span> Bag</a>
+    </header>
+
+    <main class="detail-main">
+      <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="index.html">Home</a><span>/</span><a href="index.html#new-drops">Shop</a><span>/</span><span id="breadcrumb-product">Product</span></nav>
+      <div id="detail-status" class="detail-status" role="status" hidden></div>
+      <section class="product-detail" id="product-detail" hidden>
+        <div class="gallery-column">
+          <div class="gallery-main">
+            <img id="main-image" alt="" />
+            <span class="product-code" id="product-code"></span>
+            <button class="save-image" id="save-image" type="button"><span aria-hidden="true">↓</span> Save image</button>
+            <button class="gallery-arrow previous" id="previous-image" type="button" aria-label="Previous image">←</button>
+            <button class="gallery-arrow next" id="next-image" type="button" aria-label="Next image">→</button>
+            <div class="gallery-dots" id="gallery-dots" aria-label="Choose product image"></div>
+          </div>
+          <div class="thumbnail-list" id="thumbnail-list" aria-label="Product images"></div>
+          <div class="gallery-caption"><span>01 / RELAXBD ORIGINALS</span><span>DESIGNED IN BANGLADESH</span></div>
+        </div>
+
+        <section class="product-panel" aria-labelledby="product-title">
+          <p class="detail-category"><span>—</span> <span id="product-category"></span></p>
+          <p class="detail-subtitle" id="product-subtitle"></p>
+          <h1 id="product-title"></h1>
+          <div class="price-row"><strong id="product-price"></strong><span class="stock-pill" id="total-stock"></span></div>
+          <div class="detail-divider"></div>
+          <div class="size-guide-heading"><h2>Size guide</h2><span>Measurements in inches</span></div>
+          <table class="size-chart">
+            <thead><tr><th></th><th>M</th><th>L</th><th>XL</th></tr></thead>
+            <tbody><tr><th>Chest</th><td id="chart-chest-M"></td><td id="chart-chest-L"></td><td id="chart-chest-XL"></td></tr>
+              <tr><th>Length</th><td id="chart-length-M"></td><td id="chart-length-L"></td><td id="chart-length-XL"></td></tr></tbody>
+          </table>
+          <div class="size-select-heading"><h2>Select size</h2><span id="size-feedback"></span></div>
+          <div class="size-options" id="size-options" role="group" aria-label="Select size"></div>
+          <div class="quantity-row">
+            <div class="quantity-box"><button id="quantity-minus" type="button" aria-label="Decrease quantity">−</button><output id="quantity-value">1</output><button id="quantity-plus" type="button" aria-label="Increase quantity">＋</button></div>
+            <span id="available-stock"></span>
+          </div>
+          <div class="primary-actions">
+            <button class="buy-now" id="buy-now" type="button">Buy now <span id="buy-now-total"></span><span aria-hidden="true">↗</span></button>
+            <button class="add-to-cart" id="add-to-cart" type="button" aria-label="Add to cart">Add to cart <span aria-hidden="true">＋</span></button>
+          </div>
+          <button class="whatsapp-order" id="whatsapp-order" type="button"><span aria-hidden="true">◉</span> Order on WhatsApp <span aria-hidden="true">↗</span></button>
+          <p class="action-feedback" id="action-feedback" role="status" aria-live="polite"></p>
+          <div class="detail-promises"><span><b aria-hidden="true">↗</b> Delivery across Bangladesh</span><span><b aria-hidden="true">✓</b> Quality assured</span></div>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>
