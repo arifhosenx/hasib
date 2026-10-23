@@ -143,14 +143,14 @@ function validatePurchase() {
   const feedback = document.querySelector("#action-feedback");
   const sizeFeedback = document.querySelector("#size-feedback");
   if (!selectedSize) {
-    sizeFeedback.textContent = "Select a size first.";
-    feedback.textContent = "Please select a size before continuing.";
+    sizeFeedback.textContent = "সাইজ সিলেক্ট করুন";
+    feedback.textContent = "সাইজ সিলেক্ট করুন";
     return false;
   }
   const available = Number(currentProduct.sizeStock[selectedSize]) || 0;
   if (!available || quantity > available) {
-    sizeFeedback.textContent = "That size is out of stock.";
-    feedback.textContent = "Choose a size currently in stock.";
+    sizeFeedback.textContent = "এই সাইজটি স্টকে নেই।";
+    feedback.textContent = "স্টকে থাকা সাইজ নির্বাচন করুন।";
     return false;
   }
   sizeFeedback.textContent = "";
@@ -291,8 +291,23 @@ document.querySelector("#quantity-plus").addEventListener("click", () => {
   renderSizeOptions();
 });
 document.querySelector("#buy-now").addEventListener("click", () => {
-  if (!validatePurchase() || !addVariantToBag()) return;
-  window.location.href = "index.html?checkout=1";
+  if (!validatePurchase()) return;
+  const checkoutItem = {
+    product: currentProduct,
+    size: selectedSize,
+    quantity,
+    price: currentProduct.price,
+    code: currentProduct.code,
+    image: currentProduct.images[currentImageIndex] || currentProduct.image
+  };
+  try {
+    sessionStorage.setItem("relaxbd-buy-now", JSON.stringify(checkoutItem));
+  } catch (error) {
+    console.error("Could not save the Buy Now selection for checkout.", error);
+    document.querySelector("#action-feedback").textContent = "চেকআউটের তথ্য সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।";
+    return;
+  }
+  window.location.href = "checkout.html?mode=buy";
 });
 document.querySelector("#add-to-cart").addEventListener("click", () => {
   if (!validatePurchase() || !addVariantToBag()) return;

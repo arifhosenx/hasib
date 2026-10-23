@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="bn">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#171815" />
+    <title>অর্ডার সফল — RELAXBD</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="checkout.css" />
+    <script src="config.js" defer></script>
+    <script src="order-success.js" defer></script>
+  </head>
+  <body>
+    <header class="checkout-header">
+      <a class="checkout-brand" href="index.html" aria-label="RELAXBD storefront"><span>RELAXBD</span></a>
+      <a class="return-shop" href="index.html#new-drops">শপে ফিরে যান</a>
+      <span></span>
+    </header>
+    <main class="checkout-main success-main">
+      <section class="order-success success-details" id="order-success" aria-live="polite">
+        <span class="success-mark" aria-hidden="true">✓</span>
+        <p class="checkout-kicker">RELAXBD · ORDER CONFIRMED</p>
+        <h1>ধন্যবাদ, আপনার অর্ডারটি নেওয়া হয়েছে।</h1>
+        <p>আপনার অর্ডার নম্বর</p>
+        <strong class="success-order-number" id="success-order-number"></strong>
+        <div class="success-order-lines" id="success-order-items"></div>
+        <div class="success-totals">
+          <div><span>সাবটোটাল</span><strong id="success-subtotal"></strong></div>
+          <div><span>কুপন ডিসকাউন্ট</span><strong id="success-discount"></strong></div>
+          <div><span>শিপিং</span><strong id="success-shipping"></strong></div>
+          <div class="success-total"><span>মোট দাম</span><strong id="success-total"></strong></div>
+          <div><span>এখন পরিশোধিত</span><strong id="success-advance"></strong></div>
+          <div><span>ডেলিভারিতে দেবেন</span><strong id="success-due"></strong></div>
+        </div>
+        <p>পেমেন্ট স্ট্যাটাস: <strong id="success-payment-status">যাচাই চলছে</strong></p>
+        <p class="success-address-label">ডেলিভারির ঠিকানা</p>
+        <p id="success-address"></p>
+        <a class="primary-action" href="index.html">শপিং চালিয়ে যান <span aria-hidden="true">→</span></a>
+      </section>
+    </main>
+  </body>
+</html>

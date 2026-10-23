@@ -1,10 +1,10 @@
 let products = [...(window.RELAXBD_PRODUCTS || [])];
 
 const defaultCategories = [
-  { slug: "t-shirts", name: "T-shirts" },
-  { slug: "shirts", name: "Shirts" },
-  { slug: "bottoms", name: "Bottoms" },
-  { slug: "accessories", name: "Accessories" }
+  { slug: "t-shirts", name: "T-shirts", image: "" },
+  { slug: "shirts", name: "Shirts", image: "" },
+  { slug: "bottoms", name: "Bottoms", image: "" },
+  { slug: "accessories", name: "Accessories", image: "" }
 ];
 const defaultStore = {
   announcement: "Made for the streets. Built in Bangladesh.",
@@ -87,7 +87,7 @@ const searchPanel = document.querySelector(".search-panel");
 const cart = new Map();
 let categories = defaultCategories;
 let store = { ...defaultStore };
-let activeCategory = "all";
+let activeCategory = new URLSearchParams(window.location.search).get("category") || "all";
 let activeQuery = "";
 let sortOrder = "featured";
 let appliedPromotion = null;
@@ -120,16 +120,54 @@ function restoreCart() {
 
 function renderCategories() {
   const filterList = document.querySelector(".filter-list");
+  const homeCategoryGrid = document.querySelector("#home-category-grid");
+  const collectionsMenu = document.querySelector("#collections-menu");
   const categoryCounts = categories.map((category) => ({
     ...category,
     count: products.filter((product) => product.category === category.slug).length
   }));
   filterList.innerHTML = `
-    <button class="filter-button ${activeCategory === "all" ? "selected" : ""}" type="button" data-category="all">All pieces <span>${String(products.length).padStart(2, "0")}</span></button>
+    <button class="filter-button ${activeCategory === "all" ? "selected" : ""}" type="button" data-category="all" aria-pressed="${activeCategory === "all"}">All pieces <span>${String(products.length).padStart(2, "0")}</span></button>
     ${categoryCounts.map((category) => `
-      <button class="filter-button ${activeCategory === category.slug ? "selected" : ""}" type="button" data-category="${escapeHTML(category.slug)}">${escapeHTML(category.name)}${category.count ? ` <span>${category.count}</span>` : ""}</button>
+      <button class="filter-button ${activeCategory === category.slug ? "selected" : ""}" type="button" data-category="${escapeHTML(category.slug)}" aria-pressed="${activeCategory === category.slug}">${escapeHTML(category.name)} <span>${category.count}</span></button>
     `).join("")}
   `;
+  if (homeCategoryGrid) {
+    homeCategoryGrid.innerHTML = categoryCounts.length
+      ? categoryCounts.map((category, index) => {
+        const image = safeImageURL(category.image) || safeImageURL(products.find((product) => product.category === category.slug)?.image);
+        return `
+          <a class="home-category-card" href="/category.html?slug=${encodeURIComponent(category.slug)}">
+            <span class="home-category-image">${image ? `<img src="${escapeHTML(image)}" alt="" loading="lazy" />` : `<span aria-hidden="true">✳</span>`}</span>
+            <span class="home-category-number">${String(index + 1).padStart(2, "0")}</span>
+            <span class="home-category-name">${escapeHTML(category.name)}</span>
+            <span class="home-category-arrow" aria-hidden="true">↗</span>
+          </a>`;
+      }).join("")
+      : `<p class="category-empty">কোনো ক্যাটাগরি এখনো যোগ করা হয়নি।</p>`;
+  }
+  if (collectionsMenu) {
+    collectionsMenu.innerHTML = `
+      <a href="/category.html?view=all">ALL CATEGORIES <span aria-hidden="true">↗</span></a>
+      ${categoryCounts.map((category) => `<a href="/category.html?slug=${encodeURIComponent(category.slug)}">${escapeHTML(category.name)} <span>${category.count}</span></a>`).join("")}
+    `;
+  }
+}
+
+function selectCategory(category, { updateHistory = true, scroll = true } = {}) {
+  if (category !== "all" && !categories.some((item) => item.slug === category)) return;
+  activeCategory = category;
+  renderCategories();
+  renderProducts();
+
+  const url = new URL(window.location.href);
+  if (category === "all") url.searchParams.delete("category");
+  else url.searchParams.set("category", category);
+  if (url.searchParams.has("bag")) url.searchParams.delete("bag");
+  url.hash = "new-drops";
+  if (updateHistory) window.history.pushState({ category }, "", url);
+  else window.history.replaceState({ category }, "", url);
+  if (scroll) document.querySelector("#new-drops").scrollIntoView({ behavior: "smooth" });
 }
 
 function applyStoreContent(settings = {}) {
@@ -236,10 +274,17 @@ function safeWhatsAppURL(value) {
 }
 
 async function loadStoreData() {
-  if (!supabaseClient) return;
+  if (!supabaseClient) {
+    if (activeCategory !== "all" && !categories.some((category) => category.slug === activeCategory)) {
+      activeCategory = "all";
+      renderCategories();
+      renderProducts();
+    }
+    return;
+  }
   const [productResult, categoryResult, settingsResult] = await Promise.all([
     supabaseClient.from("products").select("id,name,subtitle,category,price,compare_at_price,badge,image,images,code,size_stock,size_chart,alt,stock,featured,created_at").eq("active", true).order("featured", { ascending: false }).order("created_at", { ascending: false }),
-    supabaseClient.from("categories").select("slug,name").eq("active", true).order("name"),
+    supabaseClient.from("categories").select("slug,name,image").eq("active", true).order("name"),
     supabaseClient.from("site_settings").select("value").eq("key", "store").maybeSingle()
   ]);
   if (productResult.error) {
@@ -275,6 +320,7 @@ async function loadStoreData() {
     categories = categoryResult.data;
     if (activeCategory !== "all" && !categories.some((category) => category.slug === activeCategory)) {
       activeCategory = "all";
+      selectCategory("all", { updateHistory: false, scroll: false });
     }
   }
   if (settingsResult.error) {
@@ -539,9 +585,12 @@ function addToCart(productId, size = "") {
 document.querySelector(".filter-list").addEventListener("click", (event) => {
   const button = event.target.closest("[data-category]");
   if (!button) return;
-  activeCategory = button.dataset.category;
-  document.querySelectorAll(".filter-button").forEach((filter) => filter.classList.toggle("selected", filter === button));
-  renderProducts();
+  selectCategory(button.dataset.category);
+});
+
+window.addEventListener("popstate", () => {
+  const category = new URLSearchParams(window.location.search).get("category") || "all";
+  selectCategory(category, { updateHistory: false, scroll: false });
 });
 
 document.querySelector("#sort-select").addEventListener("change", (event) => {
@@ -594,12 +643,12 @@ document.querySelector(".checkout-button").addEventListener("click", () => {
     showToast("Your bag is empty.");
     return;
   }
-  updatePaymentMethod();
-  document.querySelector("#checkout-error").textContent = "";
-  renderCheckoutTotals();
-  openPanel(checkoutPanel);
+  window.location.href = "checkout.html";
 });
-document.querySelector("#checkout-form").addEventListener("submit", placeOrder);
+document.querySelector("#checkout-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  window.location.href = "checkout.html";
+});
 document.querySelector("#checkout-payment").addEventListener("change", updatePaymentMethod);
 document.querySelector("#apply-promo").addEventListener("click", applyPromoCode);
 document.querySelector("#promo-code").addEventListener("keydown", (event) => {
@@ -647,11 +696,12 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") closePanels();
 });
 const cartMode = new URLSearchParams(window.location.search);
-if (cartMode.get("checkout") === "1" || cartMode.get("bag") === "open") {
+if (cartMode.get("checkout") === "1") {
+  window.location.replace("checkout.html");
+} else if (cartMode.get("bag") === "open") {
   window.addEventListener("load", () => {
     if (!cart.size) return;
-    openPanel(cartMode.get("checkout") === "1" ? checkoutPanel : cartPanel);
-    if (cartMode.get("checkout") === "1") updatePaymentMethod();
+    openPanel(cartPanel);
   }, { once: true });
 }
 

@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="bn">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#171815" />
+    <meta name="description" content="RELAXBD checkout — delivery and payment details." />
+    <title>চেকআউট — RELAXBD</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="checkout.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+    <script src="config.js" defer></script>
+    <script src="locations-data.js" defer></script>
+    <script src="checkout.js" defer></script>
+  </head>
+  <body>
+    <header class="checkout-header">
+      <a class="checkout-brand" href="index.html" aria-label="RELAXBD storefront"><span>RELAXBD</span></a>
+      <a class="return-shop" href="index.html#new-drops"><span aria-hidden="true">←</span> শপে ফিরে যান</a>
+      <a class="secure-checkout" href="index.html?bag=open"><span aria-hidden="true">▱</span> ব্যাগ <b id="header-item-count">0</b></a>
+    </header>
+
+    <main class="checkout-main">
+      <div class="checkout-intro">
+        <p class="checkout-kicker">RELAXBD · CHECKOUT</p>
+        <h1>আপনার অর্ডার সম্পন্ন করুন</h1>
+        <p>আর মাত্র কয়েকটি ধাপ — আপনার পছন্দের পণ্যটি পৌঁছে যাবে আপনার ঠিকানায়।</p>
+      </div>
+
+      <nav class="checkout-steps" aria-label="চেকআউট ধাপ">
+        <button class="step-tab active" type="button" data-step-tab="1" aria-current="step"><span>01</span> ঠিকানা</button>
+        <span class="step-connector" aria-hidden="true"></span>
+        <button class="step-tab" type="button" data-step-tab="2"><span>02</span> ডেলিভারি</button>
+        <span class="step-connector" aria-hidden="true"></span>
+        <button class="step-tab" type="button" data-step-tab="3"><span>03</span> পেমেন্ট</button>
+      </nav>
+
+      <div class="checkout-layout">
+        <form class="checkout-form" id="checkout-form" novalidate>
+          <section class="checkout-step" data-step="1">
+            <div class="section-heading">
+              <span class="section-number">01 / ঠিকানা</span>
+              <h2>ডেলিভারির ঠিকানা</h2>
+              <p>আপনার সঙ্গে যোগাযোগ ও ডেলিভারির জন্য তথ্যগুলো দিন।</p>
+            </div>
+
+            <div class="field-grid">
+              <label class="form-field field-wide" for="customer-name">
+                <span>পুরো নাম <i>*</i></span>
+                <input id="customer-name" name="customerName" autocomplete="name" maxlength="100" placeholder="আপনার পুরো নাম" />
+                <small class="field-error" data-error-for="customerName"></small>
+              </label>
+              <label class="form-field field-wide" for="customer-phone">
+                <span>মোবাইল নম্বর <i>*</i></span>
+                <input id="customer-phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="20" placeholder="01XXXXXXXXX" />
+                <small class="field-error" data-error-for="phone"></small>
+              </label>
+              <label class="form-field" for="customer-district">
+                <span>জেলা / জোন <i>*</i></span>
+                <select id="customer-district" name="district">
+                  <option value="">জেলা নির্বাচন করুন</option>
+                </select>
+                <small class="field-error" data-error-for="district"></small>
+              </label>
+              <label class="form-field" for="customer-subdistrict">
+                <span>থানা / উপজেলা <i>*</i></span>
+                <select id="customer-subdistrict" name="subdistrict" disabled>
+                  <option value="">আগে জেলা নির্বাচন করুন</option>
+                </select>
+                <small class="field-error" data-error-for="subdistrict"></small>
+              </label>
+              <label class="form-field field-wide" for="customer-address">
+                <span>বিস্তারিত ডেলিভারি ঠিকানা <i>*</i></span>
+                <textarea id="customer-address" name="address" autocomplete="street-address" rows="3" maxlength="500" placeholder="বাসা/ফ্ল্যাট, রোড, এলাকা এবং পরিচিত কোনো ল্যান্ডমার্ক লিখুন"></textarea>
+                <small class="field-error" data-error-for="address"></small>
+              </label>
+            </div>
+            <p class="step-error" id="address-step-error" role="alert"></p>
+            <div class="form-actions"><span class="required-note">* আবশ্যক তথ্য</span><button class="primary-action" type="button" data-continue="1">ডেলিভারিতে এগিয়ে যান <span aria-hidden="true">→</span></button></div>
+          </section>
+
+          <section class="checkout-step" data-step="2" hidden>
+            <div class="section-heading">
+              <span class="section-number">02 / ডেলিভারি</span>
+              <h2>ডেলিভারি পদ্ধতি</h2>
+              <p>আপনার ঠিকানায় কুরিয়ারের মাধ্যমে অর্ডার পৌঁছে দেওয়া হবে।</p>
+            </div>
+            <div class="delivery-address-card">
+              <div><span class="card-eyebrow">ডেলিভারি ঠিকানা</span><strong id="delivery-recipient"></strong><p id="delivery-address-preview"></p></div>
+              <button type="button" class="text-action" data-go-back="1">পরিবর্তন</button>
+            </div>
+            <label class="delivery-option" for="standard-delivery">
+              <input id="standard-delivery" type="radio" name="deliveryMethod" value="standard" checked />
+              <span class="radio-mark" aria-hidden="true"></span>
+              <span class="delivery-option-copy"><strong>সাধারণ কুরিয়ার ডেলিভারি</strong><small>সাধারণত ২–৫ কর্মদিবস</small></span>
+              <strong class="delivery-option-price" id="delivery-option-price">৳0</strong>
+            </label>
+            <div class="delivery-note"><span aria-hidden="true">✳</span><p>জেলা অনুযায়ী ডেলিভারি চার্জ স্বয়ংক্রিয়ভাবে হিসাব করা হয়েছে। ফোনে যোগাযোগ করার জন্য প্রস্তুত থাকুন।</p></div>
+            <p class="step-error" id="delivery-step-error" role="alert"></p>
+            <div class="form-actions"><button class="secondary-action" type="button" data-go-back="1">← ঠিকানায় ফিরে যান</button><button class="primary-action" type="button" data-continue="2">পেমেন্টে এগিয়ে যান <span aria-hidden="true">→</span></button></div>
+          </section>
+
+          <section class="checkout-step" data-step="3" hidden>
+            <div class="section-heading">
+              <span class="section-number">03 / পেমেন্ট</span>
+              <h2>পেমেন্ট পদ্ধতি</h2>
+              <p>অগ্রিম পরিশোধের পরিমাণ বেছে নিয়ে বিকাশ বা নগদে পেমেন্ট করুন।</p>
+            </div>
+            <div class="payment-options payment-plan-options">
+              <label class="payment-option" for="payment-shipping">
+                <input id="payment-shipping" type="radio" name="paymentPlan" value="shipping_advance" checked />
+                <span class="radio-mark" aria-hidden="true"></span>
+                <span><strong>ডেলিভারি চার্জ এখন, বাকিটা ডেলিভারিতে</strong><small>এখন শুধু শিপিং চার্জ, বাকি টাকা পণ্য পেয়ে দিন</small></span>
+              </label>
+              <label class="payment-option" for="payment-full">
+                <input id="payment-full" type="radio" name="paymentPlan" value="full_advance" />
+                <span class="radio-mark" aria-hidden="true"></span>
+                <span><strong>পুরো টাকা এখনই পরিশোধ করুন</strong><small>সম্পূর্ণ অর্ডার মূল্য অগ্রিম পরিশোধ করুন</small></span>
+              </label>
+            </div>
+            <section class="payment-breakdown" aria-live="polite">
+              <div><span>এখন পাঠাবেন</span><strong id="advance-amount">৳0</strong></div>
+              <div><span>ডেলিভারিতে দেবেন</span><strong id="cash-due-amount">৳0</strong></div>
+            </section>
+            <div class="wallet-tabs" role="tablist" aria-label="পেমেন্ট ওয়ালেট">
+              <button class="wallet-tab active" type="button" role="tab" aria-selected="true" data-wallet-tab="bkash">বিকাশ</button>
+              <button class="wallet-tab" type="button" role="tab" aria-selected="false" data-wallet-tab="nagad">নগদ</button>
+            </div>
+            <div class="wallet-instructions bkash-wallet" id="wallet-instructions" aria-live="polite">
+              <strong id="wallet-title">বিকাশ পার্সোনাল নম্বরে Send Money করুন</strong>
+              <div class="wallet-number-row"><span id="wallet-number">config.js-এ নম্বর সেট করুন</span><button class="copy-number" id="copy-wallet-number" type="button">কপি</button></div>
+              <p id="wallet-howto">এখন পাঠাবেন অংশে দেখানো পরিমাণটি Send Money করুন।</p>
+            </div>
+            <label class="form-field" for="payer-phone">
+              <span>আপনার বিকাশ/নগদ নম্বর <i>*</i></span>
+              <input id="payer-phone" name="payerPhone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="20" placeholder="01XXXXXXXXX" />
+              <small class="field-error" data-error-for="payerPhone"></small>
+            </label>
+            <label class="form-field transaction-field" id="transaction-field" for="transaction-id">
+              <span>TrxID <i>*</i></span>
+              <input id="transaction-id" name="transactionId" autocomplete="off" maxlength="12" placeholder="যেমন: 8N7ABC12" />
+              <small class="field-error" data-error-for="transactionId"></small>
+            </label>
+            <label class="terms-consent" for="checkout-terms">
+              <input id="checkout-terms" name="termsAccepted" type="checkbox" />
+              <span>আমি শর্তাবলী এবং গোপনীয়তা নীতি মেনে নিচ্ছি।</span>
+            </label>
+            <small class="field-error terms-error" id="terms-error" role="alert"></small>
+            <p class="step-error" id="payment-step-error" role="alert" tabindex="-1"></p>
+            <div class="final-order-actions">
+              <button class="secondary-action" type="button" data-go-back="2">← ডেলিভারিতে ফিরে যান</button>
+              <button class="primary-action confirm-order" id="place-order" type="submit"><span class="confirm-label">অর্ডার নিশ্চিত করুন</span><span aria-hidden="true">↗</span></button>
+            </div>
+            <p class="checkout-footnote">আপনার তথ্য নিরাপদে রাখা হবে এবং শুধুমাত্র অর্ডার ডেলিভারির কাজে ব্যবহার করা হবে।</p>
+          </section>
+        </form>
+
+        <aside class="checkout-sidebar" aria-label="অর্ডার সামারি এবং কুপন">
+          <section class="summary-card">
+            <div class="summary-heading"><div><span class="card-eyebrow">আপনার পছন্দ</span><h2>অর্ডার সামারি</h2></div><span class="summary-count" id="summary-count">0 পণ্য</span></div>
+            <div class="summary-items" id="summary-items"></div>
+            <div class="summary-lines">
+              <div><span>সাবটোটাল</span><span id="summary-subtotal">৳0</span></div>
+              <div><span>কুপন ডিসকাউন্ট</span><span id="summary-discount">−৳0</span></div>
+              <div><span>শিপিং চার্জ</span><span id="summary-shipping">৳0</span></div>
+              <div class="summary-grand-total"><strong>সর্বমোট</strong><strong id="summary-total">৳0</strong></div>
+            </div>
+            <p class="shipping-hint" id="shipping-hint">জেলা নির্বাচন করলে শিপিং চার্জ দেখানো হবে।</p>
+          </section>
+
+          <section class="coupon-card">
+            <span class="card-eyebrow">একটু বাড়তি ভালোবাসা</span>
+            <h2>কুপন কোড</h2>
+            <div class="coupon-entry"><input id="coupon-code" type="text" maxlength="32" placeholder="কুপন কোড লিখুন" aria-label="কুপন কোড" /><button id="apply-coupon" type="button" disabled>প্রয়োগ</button></div>
+            <p class="coupon-feedback" id="coupon-feedback" aria-live="polite"></p>
+          </section>
+        </aside>
+      </div>
+      <p class="checkout-footer-note">RELAXBD · MADE WITH INTENTION · ঢাকা, বাংলাদেশ</p>
+    </main>
+  </body>
+</html>

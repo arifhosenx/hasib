@@ -1,4 +1,6 @@
 window.RELAXBD_CONFIG = {
   supabaseUrl: "",
-  supabaseAnonKey: ""
+  supabaseAnonKey: "",
+  bkashPersonalNumber: "",
+  nagadPersonalNumber: ""
 };

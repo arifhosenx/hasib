@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Explore the RELAXBD collection." />
+    <meta name="theme-color" content="#f4f1e9" />
+    <title>Collections — RELAXBD</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/category.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+    <script src="/config.js" defer></script>
+    <script src="/products-data.js" defer></script>
+    <script src="/category.js" defer></script>
+  </head>
+  <body>
+    <div class="announcement"><span>Made for the streets. Built in Bangladesh.</span><span class="announcement-detail">Free delivery on orders over ৳2,500 <span aria-hidden="true">↗</span></span></div>
+    <header class="site-header category-site-header">
+      <a class="wordmark" href="/" aria-label="RELAXBD home">RELAXBD</a>
+      <button class="menu-toggle icon-button" type="button" aria-label="Open menu" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16M4 16h16" /></svg></button>
+      <nav class="main-nav" aria-label="Main navigation">
+        <a href="/#new-drops" class="nav-link">New arrivals</a>
+        <div class="nav-collections">
+          <a href="/category.html?view=all" class="nav-link active">Collections <span aria-hidden="true">⌄</span></a>
+          <div class="collections-menu" id="category-collections-menu"></div>
+        </div>
+        <a href="/#about" class="nav-link">Our story</a>
+        <a href="/#help" class="nav-link">Need help?</a>
+      </nav>
+      <div class="header-actions"><a class="cart-button" href="/#new-drops">Shop all <span aria-hidden="true">↗</span></a></div>
+    </header>
+    <main class="category-page section-wrap">
+      <nav class="category-breadcrumb" aria-label="Breadcrumb"><a href="/">Home</a><span>/</span><a href="/category.html?view=all">Categories</a><span id="breadcrumb-current">All collections</span></nav>
+      <header class="category-page-heading">
+        <div><p class="eyebrow" id="category-eyebrow">THE RELAXBD EDIT</p><h1 id="category-title">ALL<br /><span>COLLECTIONS.</span></h1><p class="category-page-count" id="category-count" aria-live="polite"></p></div>
+        <p class="category-page-description" id="category-description">Find your fit. Explore every RELAXBD collection, made for everyday wear.</p>
+      </header>
+      <nav class="category-chips" id="category-chips" aria-label="Browse categories"></nav>
+      <div class="category-products-toolbar" id="category-products-toolbar" hidden>
+        <span>Sort products</span>
+        <label class="sort-control"><span class="visually-hidden">Sort products</span><select id="category-sort" aria-label="Sort products"><option value="newest">Newest first</option><option value="price-low">Price: low to high</option><option value="price-high">Price: high to low</option></select><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7 5 5 5-5" /></svg></label>
+      </div>
+      <div class="category-card-grid" id="category-card-grid" aria-live="polite"></div>
+      <div class="product-grid category-product-grid" id="category-product-grid" aria-live="polite" hidden></div>
+      <section class="category-empty-state" id="category-empty-state" hidden>
+        <p class="eyebrow">A LITTLE QUIET HERE</p><h2>এই ক্যাটাগরিতে এখন কোনো প্রোডাক্ট নেই</h2><p>অন্য কালেকশন দেখুন, নতুন পণ্য শিগগিরই আসছে।</p><a class="button button-dark" href="/category.html?view=all">সব ক্যাটাগরি দেখুন <span aria-hidden="true">↗</span></a>
+      </section>
+    </main>
+    <footer class="site-footer category-site-footer"><div class="footer-main"><div class="footer-brand"><a class="wordmark" href="/">RELAXBD</a><p>Independent streetwear.<br />Made in Bangladesh.</p></div><div class="footer-column"><span>EXPLORE</span><a href="/">Home</a><a href="/category.html?view=all">All categories</a><a href="/#new-drops">Shop all</a></div><div class="footer-column"><span>WE'RE HERE</span><a href="tel:+8801305827996">+880 1305-827996</a><a href="mailto:hello@ornix.com.bd">hello@ornix.com.bd</a></div></div><div class="footer-bottom"><span>© 2026 RELAXBD. ALL GOOD THINGS RESERVED.</span><span>BDT ৳ &nbsp; · &nbsp; MADE WITH INTENTION</span></div></footer>
+  </body>
+</html>

@@ -16,6 +16,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="category.css" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     <script src="config.js" defer></script>
     <script src="products-data.js" defer></script>
@@ -35,6 +36,10 @@
       <nav class="main-nav" aria-label="Main navigation">
         <a href="#new-drops" class="nav-link active">New arrivals</a>
         <a href="#new-drops" class="nav-link">Shop all</a>
+        <div class="nav-collections">
+          <a href="/category.html?view=all" class="nav-link">Collections <span aria-hidden="true">⌄</span></a>
+          <div class="collections-menu" id="collections-menu"></div>
+        </div>
         <a href="#about" class="nav-link">Our story</a>
         <a href="#help" class="nav-link">Need help?</a>
       </nav>
@@ -72,6 +77,14 @@
         <div class="ticker-track" aria-hidden="true">
           <span>WEAR YOUR OWN WAY <b>✳</b> MADE IN BANGLADESH <b>✳</b> BUILT FOR EVERYDAY <b>✳</b> WEAR YOUR OWN WAY <b>✳</b> MADE IN BANGLADESH <b>✳</b> BUILT FOR EVERYDAY <b>✳</b></span>
         </div>
+      </section>
+
+      <section class="home-categories section-wrap" id="categories" aria-labelledby="categories-title">
+        <div class="category-section-heading">
+          <div><p class="eyebrow"><span>01</span> / FIND YOUR FIT</p><h2 id="categories-title">SHOP BY<br /><span>COLLECTION.</span></h2></div>
+          <a class="text-link" href="/category.html?view=all">All categories <span aria-hidden="true">↗</span></a>
+        </div>
+        <div class="home-category-grid" id="home-category-grid" aria-live="polite"></div>
       </section>
 
       <section class="collection section-wrap" id="new-drops" aria-labelledby="collection-title">
@@ -162,7 +175,7 @@
             <a id="whatsapp-contact" href="#" target="_blank" rel="noopener noreferrer" hidden>WhatsApp us <span aria-hidden="true">↗</span></a>
           </div>
         </div>
-        <div class="footer-column"><span>EXPLORE</span><a href="#new-drops">New arrivals</a><a href="#new-drops">Shop all</a><a href="#about">Our story</a><a href="admin.html">Admin portal</a></div>
+        <div class="footer-column"><span>EXPLORE</span><a href="#new-drops">New arrivals</a><a href="/category.html?view=all">All categories</a><a href="#about">Our story</a><a href="admin.html">Admin portal</a></div>
         <div class="footer-column"><span>WE'RE HERE</span><a id="footer-phone" href="tel:+8801305827996">+880 1305-827996</a><a id="footer-email" href="mailto:hello@ornix.com.bd">hello@ornix.com.bd</a><a href="#help">Shipping & returns</a></div>
         <p class="footer-note">Wear it your way.<br /><span>ঢাকা, বাংলাদেশ</span></p>
       </div>

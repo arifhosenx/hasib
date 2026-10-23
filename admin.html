@@ -69,7 +69,7 @@
             <article class="metric-card"><span>NET SALES</span><strong id="metric-sales">৳0</strong><small>Across all orders</small></article>
             <article class="metric-card"><span>ORDERS</span><strong id="metric-orders">0</strong><small id="metric-pending">No orders waiting</small></article>
             <article class="metric-card"><span>PRODUCTS</span><strong id="metric-products">0</strong><small id="metric-stock">Your live catalog</small></article>
-            <article class="metric-card"><span>PAYMENT REVIEW</span><strong id="metric-payments">0</strong><small>bKash TxIDs to verify</small></article>
+            <article class="metric-card"><span>PAYMENT REVIEW</span><strong id="metric-payments">0</strong><small>Wallet TxIDs to verify</small></article>
           </div>
           <div class="dashboard-section section-card"><div class="section-title"><div><p class="eyebrow">FRESH FROM YOUR SHOP</p><h2>Recent orders</h2></div><button class="subtle-button" data-go="orders" type="button">All orders ↗</button></div><div id="recent-orders" class="table-wrap"></div></div>
           <div class="dashboard-section section-card"><div class="section-title"><div><p class="eyebrow">A LITTLE HEADS-UP</p><h2>Running low</h2></div><button class="subtle-button" data-go="products" type="button">Manage products ↗</button></div><div id="low-stock-list"></div></div>
@@ -123,7 +123,8 @@
             <form id="category-form" class="category-create-card">
               <span class="category-create-icon" aria-hidden="true">＋</span>
               <div class="category-create-copy"><strong>Add a category</strong><span>Give a group of products a clear place in your shop.</span></div>
-              <label class="category-name-field" for="category-name"><span class="field-label">Category name</span><input id="category-name" maxlength="60" placeholder="e.g. Hoodies, Pants, Accessories" required /></label>
+              <label class="category-name-field" for="category-name"><span class="field-label">Category name</span><input id="category-name" maxlength="60" placeholder="e.g. Boxy Check Shirt" required /></label>
+              <label class="category-image-field" for="category-image"><span class="field-label">Category image URL (optional)</span><input id="category-image" type="url" maxlength="1000" placeholder="https://..." /></label>
               <button class="primary-button compact" type="submit">Create category <span>↗</span></button>
             </form>
             <div class="category-list-heading"><span>YOUR CATEGORIES</span><span>Use these on your products</span></div>
@@ -132,7 +133,7 @@
         </section>
 
         <section class="view" id="view-orders">
-          <div class="section-card"><div class="section-title"><div><p class="eyebrow">THE GOOD STUFF HAPPENS HERE</p><h2>Orders & payments</h2><p class="section-description">Review bKash transaction IDs before marking a payment verified. Cancelling an order returns its stock automatically.</p></div><select id="order-filter" class="table-filter" aria-label="Filter orders"><option value="all">All orders</option><option value="payment_review">Payment review</option><option value="pending">New</option><option value="processing">Processing</option><option value="shipped">Shipped</option><option value="delivered">Delivered</option><option value="cancelled">Cancelled</option></select></div><div id="orders-table" class="table-wrap"></div><div class="table-pagination" id="orders-pagination"></div></div>
+          <div class="section-card"><div class="section-title"><div><p class="eyebrow">THE GOOD STUFF HAPPENS HERE</p><h2>Orders & payments</h2><p class="section-description">Review bKash/Nagad transaction IDs before marking payments verified. Cancelling an order returns its stock automatically.</p></div><select id="order-filter" class="table-filter" aria-label="Filter orders"><option value="all">All orders</option><option value="payment_review">Payment review</option><option value="pending">New</option><option value="processing">Processing</option><option value="shipped">Shipped</option><option value="delivered">Delivered</option><option value="cancelled">Cancelled</option></select></div><div id="orders-table" class="table-wrap"></div><div class="table-pagination" id="orders-pagination"></div></div>
         </section>
 
         <section class="view" id="view-customers">
@@ -166,7 +167,7 @@
         </section>
 
         <section class="view" id="view-settings">
-          <div class="section-card"><div class="section-title"><div><p class="eyebrow">THE DETAILS THAT KEEP THINGS MOVING</p><h2>Store settings</h2><p class="section-description">Add your real payment number and contact details before taking customer orders.</p></div></div><form id="settings-form" class="form-grid">
+          <div class="section-card"><div class="section-title"><div><p class="eyebrow">THE DETAILS THAT KEEP THINGS MOVING</p><h2>Store settings</h2><p class="section-description">Add your contact details before taking customer orders. Checkout wallet numbers are set in config.js.</p></div></div><form id="settings-form" class="form-grid">
             <div class="brand-identity-card form-wide">
               <div class="brand-identity-copy"><p class="eyebrow">MAKE IT YOURS</p><h3>Logo & brand color</h3><p>Upload your logo and choose a color that fits it. These update the storefront header, footer, and accent details.</p></div>
               <div class="brand-identity-controls">
@@ -181,10 +182,10 @@
               </div>
             </div>
             <label>Contact phone<input name="contact_phone" type="tel" maxlength="32" required /></label><label>Contact email<input name="contact_email" type="email" maxlength="150" required /></label>
-            <label>bKash number (Send Money)<input name="bkash_number" type="tel" maxlength="32" placeholder="Your bKash merchant/personal number" /></label><label>WhatsApp number<input name="whatsapp_number" type="tel" maxlength="32" /></label>
+            <label>WhatsApp number<input name="whatsapp_number" type="tel" maxlength="32" /></label>
             <label>Facebook Page URL<input name="facebook_url" type="url" maxlength="255" placeholder="https://www.facebook.com/your-page" /></label>
             <label>Delivery fee (৳)<input name="delivery_fee" type="number" min="0" step="1" required /></label><label>Free delivery above (৳)<input name="free_shipping_threshold" type="number" min="0" step="1" /><span class="field-hint">0 means free-delivery threshold is turned off.</span></label>
-            <p class="payment-warning form-wide">Add the WhatsApp number and Facebook Page URL to show customer contact buttons on the storefront. WhatsApp needs your country code (for Bangladesh, start with 880). bKash payments are verified manually by your team.</p>
+            <p class="payment-warning form-wide">Add the WhatsApp number and Facebook Page URL to show customer contact buttons on the storefront. WhatsApp needs your country code (for Bangladesh, start with 880). Configure bKash/Nagad payment numbers in config.js; wallet payments are verified manually by your team.</p>
             <p id="settings-form-error" class="form-error form-wide" role="alert"></p><div class="form-actions form-wide"><button class="primary-button compact" type="submit">Save store settings <span>↗</span></button></div>
           </form></div>
         </section>

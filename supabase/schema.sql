@@ -9,9 +9,11 @@ create table if not exists public.admin_users (
 create table if not exists public.categories (
   slug text primary key check (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),
   name text not null check (length(trim(name)) between 1 and 60),
+  image text not null default '',
   active boolean not null default true,
   created_at timestamptz not null default now()
 );
+alter table public.categories add column if not exists image text not null default '';
 
 create table if not exists public.products (
   id uuid primary key default gen_random_uuid(),
@@ -62,9 +64,15 @@ create table if not exists public.customers (
   full_name text not null,
   phone text not null unique,
   address text not null,
+  district text not null default '',
+  subdistrict text not null default '',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.customers
+  add column if not exists district text not null default '',
+  add column if not exists subdistrict text not null default '';
 
 create table if not exists public.orders (
   id uuid primary key default gen_random_uuid(),
@@ -73,11 +81,15 @@ create table if not exists public.orders (
   status text not null check (
     status in ('payment_review', 'pending', 'processing', 'shipped', 'delivered', 'cancelled')
   ),
-  payment_method text not null check (payment_method in ('bkash', 'cash_on_delivery')),
+  payment_method text not null check (payment_method in ('bkash', 'nagad', 'cash_on_delivery')),
   payment_status text not null check (
     payment_status in ('submitted', 'verified', 'rejected', 'cash_on_delivery')
   ),
   bkash_transaction_id text,
+  payment_plan text,
+  customer_payment_phone text,
+  advance_amount integer not null default 0 check (advance_amount >= 0),
+  cash_due_amount integer not null default 0 check (cash_due_amount >= 0),
   promotion_id uuid references public.promotions (id) on delete set null,
   subtotal integer not null check (subtotal >= 0),
   discount integer not null default 0 check (discount >= 0),
@@ -88,14 +100,48 @@ create table if not exists public.orders (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   check (
-    (payment_method = 'bkash' and length(trim(coalesce(bkash_transaction_id, ''))) > 0)
+    (payment_method in ('bkash', 'nagad') and length(trim(coalesce(bkash_transaction_id, ''))) > 0)
     or (payment_method = 'cash_on_delivery' and bkash_transaction_id is null)
   )
 );
 
-create unique index if not exists orders_bkash_transaction_id_unique
+alter table public.orders
+  add column if not exists payment_plan text,
+  add column if not exists customer_payment_phone text,
+  add column if not exists advance_amount integer not null default 0,
+  add column if not exists cash_due_amount integer not null default 0;
+
+alter table public.orders drop constraint if exists orders_payment_method_check;
+alter table public.orders add constraint orders_payment_method_check
+  check (payment_method in ('bkash', 'nagad', 'cash_on_delivery'));
+alter table public.orders drop constraint if exists orders_check;
+alter table public.orders drop constraint if exists orders_payment_details_check;
+alter table public.orders add constraint orders_payment_details_check
+  check (
+    (payment_method in ('bkash', 'nagad') and length(trim(coalesce(bkash_transaction_id, ''))) > 0)
+    or (payment_method = 'cash_on_delivery' and bkash_transaction_id is null)
+  );
+alter table public.orders drop constraint if exists orders_payment_plan_check;
+alter table public.orders add constraint orders_payment_plan_check
+  check (payment_plan is null or payment_plan in ('shipping_advance', 'full_advance'));
+alter table public.orders drop constraint if exists orders_advance_amount_check;
+alter table public.orders add constraint orders_advance_amount_check check (advance_amount >= 0);
+alter table public.orders drop constraint if exists orders_cash_due_amount_check;
+alter table public.orders add constraint orders_cash_due_amount_check check (cash_due_amount >= 0);
+
+drop index if exists public.orders_bkash_transaction_id_unique;
+create unique index if not exists orders_transaction_id_unique
   on public.orders (bkash_transaction_id)
   where bkash_transaction_id is not null;
+
+create table if not exists public.order_notification_outbox (
+  order_id uuid primary key references public.orders (id) on delete cascade,
+  status text not null default 'pending' check (status in ('pending', 'processing', 'sent', 'failed')),
+  attempts integer not null default 0 check (attempts >= 0),
+  last_error text not null default '',
+  created_at timestamptz not null default now(),
+  sent_at timestamptz
+);
 
 create table if not exists public.order_items (
   id uuid primary key default gen_random_uuid(),
@@ -173,6 +219,9 @@ alter table public.site_settings enable row level security;
 alter table public.customers enable row level security;
 alter table public.orders enable row level security;
 alter table public.order_items enable row level security;
+alter table public.order_notification_outbox enable row level security;
+revoke all on public.order_notification_outbox from anon, authenticated;
+grant select, update on public.order_notification_outbox to service_role;
 
 drop policy if exists "Admins read their own account" on public.admin_users;
 create policy "Admins read their own account"
@@ -258,6 +307,72 @@ begin
 end;
 $$;
 
+create or replace function public.queue_order_notification()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  insert into public.order_notification_outbox (order_id)
+  values (new.id)
+  on conflict (order_id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists orders_queue_notification on public.orders;
+create trigger orders_queue_notification
+  after insert on public.orders
+  for each row execute function public.queue_order_notification();
+
+create or replace function public.claim_order_notification(p_order_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_claimed uuid;
+begin
+  update public.order_notification_outbox
+  set status = 'processing',
+      attempts = attempts + 1,
+      last_error = ''
+  where order_id = p_order_id
+    and status in ('pending', 'failed')
+  returning order_id into v_claimed;
+  return v_claimed is not null;
+end;
+$$;
+
+revoke all on function public.claim_order_notification(uuid) from public, anon, authenticated;
+grant execute on function public.claim_order_notification(uuid) to service_role;
+
+create or replace function public.complete_order_notification(
+  p_order_id uuid,
+  p_sent boolean,
+  p_error text default ''
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  update public.order_notification_outbox
+  set status = case when p_sent then 'sent' else 'failed' end,
+      last_error = case when p_sent then '' else left(coalesce(p_error, 'Notification delivery failed'), 500) end,
+      sent_at = case when p_sent then now() else null end
+  where order_id = p_order_id
+    and status = 'processing';
+  return found;
+end;
+$$;
+
+revoke all on function public.complete_order_notification(uuid, boolean, text) from public, anon, authenticated;
+grant execute on function public.complete_order_notification(uuid, boolean, text) to service_role;
+
 drop trigger if exists products_set_updated_at on public.products;
 create trigger products_set_updated_at
   before update on public.products
@@ -310,15 +425,27 @@ create trigger orders_restore_inventory
   before update of status on public.orders
   for each row execute function public.restore_cancelled_order_inventory();
 
+drop function if exists public.place_order(text, text, text, text, text, jsonb, text, text);
+drop function if exists public.place_order(text, text, text, text, text, jsonb, text, text, text, text);
+drop function if exists public.place_order(text, text, text, text, text, text, text, jsonb, text, text, text, text, integer, integer, integer, integer);
+
 create or replace function public.place_order(
   p_customer_name text,
   p_phone text,
   p_address text,
-  p_payment_method text,
+  p_payment_provider text,
+  p_payment_plan text,
+  p_customer_payment_phone text,
   p_transaction_id text,
   p_items jsonb,
+  p_delivery_district text,
+  p_delivery_subdistrict text,
   p_promo_code text default null,
-  p_customer_note text default ''
+  p_customer_note text default '',
+  p_expected_subtotal integer default null,
+  p_expected_discount integer default null,
+  p_expected_delivery_fee integer default null,
+  p_expected_total integer default null
 )
 returns jsonb
 language plpgsql
@@ -338,7 +465,10 @@ declare
   v_delivery_fee integer := 0;
   v_free_shipping_threshold integer := null;
   v_total integer;
+  v_advance_amount integer;
+  v_cash_due_amount integer;
   v_phone text;
+  v_payer_phone text;
   v_transaction_id text;
   v_item_count integer;
   v_settings jsonb;
@@ -346,8 +476,15 @@ begin
   if p_customer_name is null or length(trim(p_customer_name)) not between 2 and 100 then
     raise exception 'Enter a valid name (2–100 characters)';
   end if;
-  if p_address is null or length(trim(p_address)) not between 8 and 500 then
+  if p_customer_name ~ '<[^>]*>' or p_address ~ '<[^>]*>' then
+    raise exception 'HTML is not allowed in order details';
+  end if;
+  if p_address is null or length(trim(p_address)) not between 8 and 600 then
     raise exception 'Enter a complete delivery address';
+  end if;
+  if nullif(trim(coalesce(p_delivery_district, '')), '') is null
+    or nullif(trim(coalesce(p_delivery_subdistrict, '')), '') is null then
+    raise exception 'Choose a delivery district and subdistrict';
   end if;
   v_phone := regexp_replace(coalesce(p_phone, ''), '[^0-9]', '', 'g');
   if length(v_phone) not in (11, 13)
@@ -358,22 +495,19 @@ begin
   if length(trim(coalesce(p_customer_note, ''))) > 500 then
     raise exception 'Order note must be 500 characters or fewer';
   end if;
-  if p_payment_method is null or p_payment_method not in ('bkash', 'cash_on_delivery') then
-    raise exception 'Choose a supported payment method';
+  if p_payment_provider is null or p_payment_provider not in ('bkash', 'nagad') then
+    raise exception 'Choose a supported payment provider';
   end if;
-  if p_payment_method = 'bkash' then
-    select coalesce(value, '{}'::jsonb) into v_settings
-    from public.site_settings where key = 'store';
-    if nullif(trim(coalesce(v_settings ->> 'bkash_number', '')), '') is null then
-      raise exception 'The store has not configured a bKash payment number';
-    end if;
+  if p_payment_plan is null or p_payment_plan not in ('shipping_advance', 'full_advance') then
+    raise exception 'Choose a supported payment plan';
+  end if;
+  v_payer_phone := regexp_replace(coalesce(p_customer_payment_phone, ''), '[^0-9]', '', 'g');
+  if v_payer_phone !~ '^01[0-9]{9}$' then
+    raise exception 'Enter a valid payment phone number';
   end if;
   v_transaction_id := nullif(upper(trim(coalesce(p_transaction_id, ''))), '');
-  if p_payment_method = 'bkash' and (v_transaction_id is null or length(v_transaction_id) not between 4 and 64) then
-    raise exception 'Enter the bKash transaction ID for your payment';
-  end if;
-  if p_payment_method = 'cash_on_delivery' then
-    v_transaction_id := null;
+  if v_transaction_id is null or v_transaction_id !~ '^[A-Z0-9]{8,12}$' then
+    raise exception 'Enter a valid transaction ID';
   end if;
   if p_items is null or jsonb_typeof(p_items) is distinct from 'array' then
     raise exception 'Your basket is empty or contains too many different items';
@@ -395,17 +529,34 @@ begin
   ) then
     raise exception 'Your basket contains an invalid item or quantity';
   end if;
-  if p_payment_method = 'bkash' and exists (
+  if exists (
     select 1 from public.orders
     where bkash_transaction_id = v_transaction_id
   ) then
-    raise exception 'This bKash transaction ID has already been submitted';
+    raise exception 'This transaction ID has already been submitted';
   end if;
 
   select coalesce(value, '{}'::jsonb) into v_settings
   from public.site_settings where key = 'store';
-  v_delivery_fee := greatest(0, coalesce((v_settings ->> 'delivery_fee')::integer, 150));
-  v_free_shipping_threshold := nullif((v_settings ->> 'free_shipping_threshold')::integer, 0);
+  v_delivery_fee := case
+    when trim(p_delivery_district) = 'Dhaka'
+      and lower(trim(p_delivery_subdistrict)) in (
+        'adabor', 'badda', 'bangshal', 'biman bandar', 'cantonment', 'chak bazar',
+        'dakshinkhan', 'darus salam', 'demra', 'dhanmondi', 'gendaria', 'gulshan',
+        'hazaribagh', 'jatrabari', 'kadamtali', 'kafrul', 'kalabagan', 'kamrangir char',
+        'khilgaon', 'khilkhet', 'kotwali', 'lalbagh', 'mirpur', 'mohammadpur', 'motijheel',
+        'new market', 'pallabi', 'paltan', 'ramna', 'rampura', 'sabujbag', 'shah ali',
+        'shahbagh', 'sher-e-bangla nagar', 'shyampur', 'sutrapur', 'tejgaon',
+        'tejgaon industrial area', 'turag', 'uttar khan', 'uttara', 'shahjahanpur'
+      )
+      then greatest(0, coalesce((v_settings ->> 'dhaka_delivery_fee')::integer, 70))
+    else greatest(0, coalesce((v_settings ->> 'outside_dhaka_delivery_fee')::integer, 130))
+  end;
+  v_free_shipping_threshold := case
+    when v_settings ? 'free_shipping_threshold'
+      then nullif((v_settings ->> 'free_shipping_threshold')::integer, 0)
+    else 2500
+  end;
 
   for v_line in
     select p.id as product_id, p.name, p.subtitle, p.price, p.stock, item.quantity, item.size,
@@ -479,25 +630,36 @@ begin
     v_delivery_fee := 0;
   end if;
   v_total := v_subtotal - v_discount + v_delivery_fee;
+  v_advance_amount := case when p_payment_plan = 'full_advance' then v_total else v_delivery_fee end;
+  v_cash_due_amount := v_total - v_advance_amount;
+  if p_expected_subtotal is distinct from v_subtotal
+    or p_expected_discount is distinct from v_discount
+    or p_expected_delivery_fee is distinct from v_delivery_fee
+    or p_expected_total is distinct from v_total then
+    raise exception 'Order totals changed; review your order and try again';
+  end if;
 
-  insert into public.customers (full_name, phone, address)
-  values (trim(p_customer_name), v_phone, trim(p_address))
+  insert into public.customers (full_name, phone, address, district, subdistrict)
+  values (trim(p_customer_name), v_phone, trim(p_address), trim(p_delivery_district), trim(p_delivery_subdistrict))
   on conflict (phone) do update
     set full_name = excluded.full_name,
-        address = excluded.address
+        address = excluded.address,
+        district = excluded.district,
+        subdistrict = excluded.subdistrict
   returning id into v_customer_id;
 
   insert into public.orders (
     id, order_number, customer_id, status, payment_method, payment_status,
-    bkash_transaction_id, promotion_id, subtotal, discount, delivery_fee,
-    total, customer_note
+    bkash_transaction_id, payment_plan, customer_payment_phone, advance_amount,
+    cash_due_amount, promotion_id, subtotal, discount, delivery_fee, total, customer_note
   )
   values (
     v_order_id, v_order_number, v_customer_id,
-    case when p_payment_method = 'bkash' then 'payment_review' else 'pending' end,
-    p_payment_method,
-    case when p_payment_method = 'bkash' then 'submitted' else 'cash_on_delivery' end,
-    v_transaction_id, case when v_has_promotion then v_promotion.id end,
+    'payment_review',
+    p_payment_provider,
+    'submitted',
+    v_transaction_id, p_payment_plan, v_payer_phone, v_advance_amount,
+    v_cash_due_amount, case when v_has_promotion then v_promotion.id end,
     v_subtotal, v_discount, v_delivery_fee, v_total,
     trim(coalesce(p_customer_note, ''))
   );
@@ -544,12 +706,22 @@ begin
     update public.promotions set used_count = used_count + 1 where id = v_promotion.id;
   end if;
 
-  return jsonb_build_object('order_id', v_order_id, 'order_number', v_order_number, 'total', v_total);
+  return jsonb_build_object(
+    'order_id', v_order_id,
+    'order_number', v_order_number,
+    'subtotal', v_subtotal,
+    'discount', v_discount,
+    'delivery_fee', v_delivery_fee,
+    'total', v_total,
+    'advance_amount', v_advance_amount,
+    'cash_due_amount', v_cash_due_amount,
+    'payment_status', 'submitted'
+  );
 end;
 $$;
 
-revoke all on function public.place_order(text, text, text, text, text, jsonb, text, text) from public;
-grant execute on function public.place_order(text, text, text, text, text, jsonb, text, text) to anon, authenticated;
+revoke all on function public.place_order(text, text, text, text, text, text, text, jsonb, text, text, text, text, integer, integer, integer, integer) from public;
+grant execute on function public.place_order(text, text, text, text, text, text, text, jsonb, text, text, text, text, integer, integer, integer, integer) to anon, authenticated;
 
 create or replace function public.validate_promotion(
   p_code text,

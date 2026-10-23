@@ -26,7 +26,6 @@ const settingsDefaults = {
   brand_logo_url: "",
   brand_color: "#d4f33c",
   facebook_url: "",
-  bkash_number: "",
   whatsapp_number: "",
   faqs: [
     { question: "How long does delivery take?", answer: "Orders usually arrive in 1–2 business days in Dhaka and 3–5 business days elsewhere in Bangladesh. Our team will share delivery updates with you." },
@@ -254,7 +253,7 @@ function renderLowStock() {
 
 async function loadCategories() {
   const { data, error } = await supabaseClient.from("categories")
-    .select("slug,name,active")
+    .select("slug,name,image,active")
     .order("name");
   if (error) {
     console.error("Could not load categories.", error);
@@ -270,7 +269,7 @@ function renderCategories() {
   if (categoryCount) categoryCount.textContent = `${categories.length} ${categories.length === 1 ? "category" : "categories"}`;
   document.querySelector("#categories-list").innerHTML = categories.length
     ? categories.map((category) => `
-      <article class="category-item ${category.active ? "" : "archived"}"><span>${html(category.name)}${category.active ? "" : "<small>Archived</small>"}</span><button type="button" data-toggle-category="${html(category.slug)}" data-active="${category.active}" aria-label="${category.active ? "Archive" : "Publish"} ${html(category.name)}">${category.active ? "×" : "↗"}</button></article>
+      <article class="category-item ${category.active ? "" : "archived"}"><span>${html(category.name)}${category.active ? "" : "<small>Archived</small>"}${category.image ? `<small>Custom image set</small>` : ""}</span><button type="button" data-toggle-category="${html(category.slug)}" data-active="${category.active}" aria-label="${category.active ? "Archive" : "Publish"} ${html(category.name)}">${category.active ? "×" : "↗"}</button></article>
     `).join("")
     : `<p class="table-muted">No categories yet.</p>`;
   const select = document.querySelector("#product-form select[name=category]");
@@ -440,17 +439,25 @@ async function toggleProduct(productId, currentlyActive) {
 async function addCategory(event) {
   event.preventDefault();
   const input = document.querySelector("#category-name");
+  const imageInput = document.querySelector("#category-image");
   const name = input.value.trim();
+  const image = safeImage(imageInput.value.trim());
+  if (imageInput.value.trim() && !image) {
+    notify("Enter a valid http or https image URL.", "error");
+    imageInput.focus();
+    return;
+  }
   const baseSlug = name.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const slug = baseSlug || `category-${crypto.randomUUID().slice(0, 8)}`;
-  const { error } = await supabaseClient.from("categories").insert({ slug, name });
+  const { error } = await supabaseClient.from("categories").insert({ slug, name, image });
   if (error) {
     console.error("Could not add category.", error);
     notify(error.message.includes("duplicate") ? "A category with that name already exists." : error.message, "error");
     return;
   }
   input.value = "";
+  imageInput.value = "";
   notify("Category added.");
   await loadCategories();
 }
@@ -529,7 +536,7 @@ function renderRecentOrders() {
 
 async function loadOrders() {
   let query = supabaseClient.from("orders")
-    .select("id,order_number,status,payment_method,payment_status,bkash_transaction_id,subtotal,discount,delivery_fee,total,customer_note,created_at,customers(full_name,phone,address),order_items(product_name,quantity,size)", { count: "exact" })
+    .select("id,order_number,status,payment_method,payment_status,bkash_transaction_id,payment_plan,customer_payment_phone,advance_amount,cash_due_amount,subtotal,discount,delivery_fee,total,customer_note,created_at,customers(full_name,phone,address),order_items(product_name,quantity,size)", { count: "exact" })
     .order("created_at", { ascending: false });
   if (activeOrderFilter !== "all") query = query.eq("status", activeOrderFilter);
   const { data, error, count } = await query.range(orderPage * pageSize, orderPage * pageSize + pageSize - 1);
@@ -561,9 +568,9 @@ function renderOrders() {
     <tr data-order-row="${html(order.id)}">
       <td><span class="table-primary">${html(order.order_number)}</span><div class="table-muted">${dateTime(order.created_at)}</div>${(order.order_items || []).map((item) => `<div class="table-muted">${html(item.product_name)}${item.size ? ` · ${html(item.size)}` : ""} × ${item.quantity}</div>`).join("")}</td>
       <td>${html(order.customers?.full_name || "Customer")}<div class="table-muted">${html(order.customers?.phone || "")}</div><div class="table-muted">${html(order.customers?.address || "")}</div></td>
-      <td><span class="status-pill ${statusColor(order.payment_status)}">${html(statusLabel(order.payment_status))}</span>${order.bkash_transaction_id ? `<div class="txn-id"><span>TxnID</span><strong>${html(order.bkash_transaction_id)}</strong></div>` : ""}${order.customer_note ? `<div class="table-muted">Note: ${html(order.customer_note)}</div>` : ""}</td>
-      <td>${money(order.total)}<div class="table-muted">${order.payment_method === "bkash" ? "bKash" : "Cash on delivery"}</div></td>
-      <td><select class="order-status-select" aria-label="Order status for ${html(order.order_number)}" ${order.status === "cancelled" ? "disabled" : ""}>${statusOptions.map((status) => `<option value="${status}" ${status === order.status ? "selected" : ""}>${html(statusLabel(status))}</option>`).join("")}</select><select class="payment-status-select" aria-label="Payment status for ${html(order.order_number)}" ${order.payment_method !== "bkash" ? "disabled" : ""}>${paymentOptions.filter((status) => status !== "cash_on_delivery" || order.payment_method === "cash_on_delivery").map((status) => `<option value="${status}" ${status === order.payment_status ? "selected" : ""}>${html(statusLabel(status))}</option>`).join("")}</select></td>
+      <td><span class="status-pill ${statusColor(order.payment_status)}">${html(statusLabel(order.payment_status))}</span>${order.bkash_transaction_id ? `<div class="txn-id"><span>TxnID · ${html(order.payment_method === "nagad" ? "Nagad" : "bKash")}</span><strong>${html(order.bkash_transaction_id)}</strong></div><div class="table-muted">পাঠিয়েছেন: ${html(order.customer_payment_phone || "—")}</div>` : ""}${order.customer_note ? `<div class="table-muted">Note: ${html(order.customer_note)}</div>` : ""}</td>
+      <td>${money(order.total)}<div class="table-muted">${order.payment_method === "nagad" ? "Nagad" : order.payment_method === "bkash" ? "bKash" : "Cash on delivery"}</div>${order.payment_method !== "cash_on_delivery" ? `<div class="table-muted">এখন ${money(order.advance_amount)} · পরে ${money(order.cash_due_amount)}</div>` : ""}</td>
+      <td><select class="order-status-select" aria-label="Order status for ${html(order.order_number)}" ${order.status === "cancelled" ? "disabled" : ""}>${statusOptions.map((status) => `<option value="${status}" ${status === order.status ? "selected" : ""}>${html(statusLabel(status))}</option>`).join("")}</select><select class="payment-status-select" aria-label="Payment status for ${html(order.order_number)}" ${order.payment_method === "cash_on_delivery" ? "disabled" : ""}>${paymentOptions.filter((status) => status !== "cash_on_delivery" || order.payment_method === "cash_on_delivery").map((status) => `<option value="${status}" ${status === order.payment_status ? "selected" : ""}>${html(statusLabel(status))}</option>`).join("")}</select></td>
       <td><button class="row-action" data-save-order="${html(order.id)}" type="button" ${order.status === "cancelled" ? "disabled" : ""}>Save changes</button></td>
     </tr>
   `).join("")}</tbody></table>`;
@@ -575,8 +582,8 @@ async function saveOrder(orderId) {
   if (!row || !existing) return;
   const status = row.querySelector(".order-status-select").value;
   const paymentStatus = row.querySelector(".payment-status-select").value;
-  if (existing.payment_method === "bkash" && paymentStatus === "verified" && !existing.bkash_transaction_id) {
-    notify("This order has no bKash TxnID to verify.", "error");
+  if (["bkash", "nagad"].includes(existing.payment_method) && paymentStatus === "verified" && !existing.bkash_transaction_id) {
+    notify("This order has no wallet TxnID to verify.", "error");
     return;
   }
   const { error } = await supabaseClient.from("orders").update({
@@ -818,7 +825,6 @@ async function saveStoreSettings(event) {
   values.contact_phone = String(form.get("contact_phone")).trim();
   values.contact_email = String(form.get("contact_email")).trim();
   values.facebook_url = String(form.get("facebook_url") || "").trim();
-  values.bkash_number = String(form.get("bkash_number") || "").trim();
   values.whatsapp_number = String(form.get("whatsapp_number") || "").trim();
   values.brand_color = String(form.get("brand_color") || "").trim();
   values.delivery_fee = Number(form.get("delivery_fee"));

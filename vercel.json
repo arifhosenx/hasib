@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/categories", "destination": "/category.html?view=all" },
+    { "source": "/category/:slug", "destination": "/category.html?slug=:slug" }
+  ]
+}
