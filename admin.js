@@ -54,8 +54,6 @@ let orderCount = 0;
 let customerPage = 0;
 let customerCount = 0;
 let toastTimer;
-let demoPreviewActive = false;
-let demoControlStates = [];
 let productImagePreviewUrl = "";
 
 const html = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({
@@ -157,17 +155,6 @@ async function handleLogin(event) {
 }
 
 async function signOut() {
-  if (demoPreviewActive) {
-    demoPreviewActive = false;
-    adminApp.classList.remove("demo-preview");
-    demoControlStates.forEach(([control, disabled]) => { control.disabled = disabled; });
-    demoControlStates = [];
-    document.querySelectorAll(".view").forEach((view) => { view.hidden = false; });
-    document.querySelector("#admin-alert").hidden = true;
-    adminApp.hidden = true;
-    loginScreen.hidden = false;
-    return;
-  }
   const { error } = await supabaseClient.auth.signOut();
   if (error) {
     console.error("Admin sign-out failed.", error);
@@ -177,88 +164,6 @@ async function signOut() {
   adminApp.hidden = true;
   loginScreen.hidden = false;
   loginForm.reset();
-}
-
-function showDemoPreview() {
-  demoPreviewActive = true;
-  loginScreen.hidden = true;
-  adminApp.hidden = false;
-  adminApp.classList.add("demo-preview");
-  document.querySelector("#admin-email").textContent = "Demo preview";
-  document.querySelectorAll(".view").forEach((view) => { view.hidden = false; });
-  const alert = document.querySelector("#admin-alert");
-  alert.textContent = "DEMO PREVIEW — Sample data only. This dashboard is not connected to a store, and nothing can be saved.";
-  alert.className = "admin-alert demo-notice";
-  alert.hidden = false;
-
-  document.querySelector("#metric-sales").textContent = money(48650);
-  document.querySelector("#metric-orders").textContent = "24";
-  document.querySelector("#metric-pending").textContent = "3 waiting for attention";
-  document.querySelector("#metric-payments").textContent = "2";
-  document.querySelector("#metric-products").textContent = "3";
-  document.querySelector("#metric-stock").textContent = "3 sample products";
-  document.querySelector("#nav-order-count").textContent = "3";
-  const now = new Date().toISOString();
-  categories = [
-    { slug: "t-shirts", name: "T-shirts", active: true },
-    { slug: "shirts", name: "Shirts", active: true },
-    { slug: "bottoms", name: "Bottoms", active: true },
-    { slug: "accessories", name: "Accessories", active: true }
-  ];
-  renderCategories();
-  products = [
-    { id: "demo-product-1", name: "Core heavyweight tee", subtitle: "Black · Relaxed fit", category: "t-shirts", price: 1290, compare_at_price: 1590, stock: 2, active: true, featured: true, badge: "Best seller", image: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=120&q=80", alt: "Black heavyweight t-shirt" },
-    { id: "demo-product-2", name: "Everyday relaxed shirt", subtitle: "Natural · Boxy fit", category: "shirts", price: 1890, stock: 4, active: true, featured: false, badge: "Just in", image: "https://images.unsplash.com/photo-1598033129183-c4f50c736f10?auto=format&fit=crop&w=120&q=80", alt: "Relaxed fit shirt" },
-    { id: "demo-product-3", name: "Utility straight trouser", subtitle: "Olive · Straight fit", category: "bottoms", price: 2490, stock: 12, active: true, featured: true, badge: "New", image: "https://images.unsplash.com/photo-1473966968600-fa801b869a1a?auto=format&fit=crop&w=120&q=80", alt: "Olive utility trousers" }
-  ];
-  orders = [
-    { id: "demo-order-1048", order_number: "DEMO-1048", status: "pending", payment_method: "bkash", payment_status: "verified", bkash_transaction_id: "DEMO-TXN-1048", subtotal: 2580, discount: 0, delivery_fee: 0, total: 2580, customer_note: "", created_at: now, customers: { full_name: "Sample customer", phone: "01XXXXXXXXX", address: "Sample address, Dhaka" }, order_items: [{ product_name: "Core heavyweight tee", quantity: 2 }] },
-    { id: "demo-order-1047", order_number: "DEMO-1047", status: "processing", payment_method: "cash_on_delivery", payment_status: "cash_on_delivery", bkash_transaction_id: "", subtotal: 1290, discount: 0, delivery_fee: 150, total: 1440, customer_note: "", created_at: now, customers: { full_name: "Sample customer", phone: "01XXXXXXXXX", address: "Sample address, Chattogram" }, order_items: [{ product_name: "Everyday relaxed shirt", quantity: 1 }] },
-    { id: "demo-order-1046", order_number: "DEMO-1046", status: "payment_review", payment_method: "bkash", payment_status: "submitted", bkash_transaction_id: "DEMO-TXN-1046", subtotal: 1690, discount: 0, delivery_fee: 150, total: 1840, customer_note: "Please call before delivery.", created_at: now, customers: { full_name: "Sample customer", phone: "01XXXXXXXXX", address: "Sample address, Sylhet" }, order_items: [{ product_name: "Utility straight trouser", quantity: 1 }] }
-  ];
-  const store = { ...settingsDefaults, contact_phone: "01XXXXXXXXX", contact_email: "hello@example.com", bkash_number: "01XXXXXXXXX", whatsapp_number: "8801XXXXXXXXX", facebook_url: "https://www.facebook.com/your-page" };
-  fillForm(document.querySelector("#content-form"), store);
-  fillForm(document.querySelector("#settings-form"), store);
-  renderFaqFields(store.faqs);
-  document.querySelector("#product-form select[name=category]").innerHTML = categories
-    .map((category) => `<option value="${html(category.slug)}">${html(category.name)}</option>`).join("");
-  renderProducts();
-  renderOrders();
-  document.querySelector("#customers-table").innerHTML = `<table class="data-table"><thead><tr><th>Customer</th><th>Phone</th><th>Delivery address</th><th>Orders</th><th>Customer since</th></tr></thead><tbody>
-    <tr><td class="table-primary">Sample customer</td><td>01XXXXXXXXX</td><td>Sample address, Dhaka</td><td>3</td><td>${dateTime(now)}</td></tr>
-    <tr><td class="table-primary">Another sample</td><td>01XXXXXXXXX</td><td>Sample address, Chattogram</td><td>1</td><td>${dateTime(now)}</td></tr>
-  </tbody></table>`;
-  document.querySelector("#promotions-list").innerHTML = `<table class="data-table"><thead><tr><th>Code</th><th>Discount</th><th>Minimum spend</th><th>Used</th><th>Visibility</th><th>Actions</th></tr></thead><tbody>
-    <tr><td><span class="table-primary">WELCOME10</span><div class="table-muted">A little welcome gift</div></td><td>10%</td><td>${money(1500)}</td><td>12 / 100</td><td><span class="status-pill green">Live</span></td><td><button class="row-action" type="button" disabled>Pause</button></td></tr>
-    <tr><td><span class="table-primary">FREESHIP</span><div class="table-muted">Free delivery on your next order</div></td><td>${money(150)}</td><td>${money(2500)}</td><td>7 / ∞</td><td><span class="status-pill">Paused</span></td><td><button class="row-action" type="button" disabled>Activate</button></td></tr>
-  </tbody></table>`;
-  for (const id of ["products-pagination", "orders-pagination", "customers-pagination"]) {
-    document.getElementById(id).textContent = "";
-  }
-  renderRecentOrders();
-  renderLowStock();
-  demoControlStates = [...adminApp.querySelectorAll("input, select, textarea, button:not(.nav-item):not([data-go]):not(#sign-out):not(#mobile-menu-button):not(#add-product):not([data-close-product])")]
-    .map((control) => [control, control.disabled]);
-  demoControlStates.forEach(([control]) => { control.disabled = true; });
-}
-
-function openDemoProductEditor() {
-  openProductEditor();
-  const sample = products[0];
-  const form = document.querySelector("#product-form");
-  form.elements.name.value = "New RELAXBD product";
-  form.elements.subtitle.value = "Stone · Relaxed fit";
-  form.elements.price.value = "1890";
-  form.elements.compare_at_price.value = "";
-  form.elements.stock.value = "12";
-  form.elements.badge.value = "Just in";
-  form.elements.image.value = sample?.image || "";
-  form.elements.alt.value = sample?.alt || "New RELAXBD product";
-  setProductImagePreview(sample?.image || "", "New RELAXBD product");
-  document.querySelector("#image-upload-status").textContent = "Photo upload is disabled in the sample preview.";
-  form.querySelectorAll("input, select, textarea, button").forEach((control) => {
-    if (control.type !== "hidden" && !control.matches("[data-close-product]")) control.disabled = true;
-  });
 }
 
 function emptyTable(message) {
@@ -903,7 +808,6 @@ async function showView(viewName) {
     settings: "Get the details right."
   })[viewName];
   document.querySelector("#sidebar").classList.remove("open");
-  if (demoPreviewActive) return;
   if (viewName === "overview") await loadOverview();
   if (viewName === "products") await Promise.all([loadProducts(), loadCategories()]);
   if (viewName === "categories") await Promise.all([loadCategories(), loadProducts()]);
@@ -938,8 +842,7 @@ function bindAdminEvents() {
     document.querySelector("#sidebar").classList.toggle("open");
   });
   document.querySelector("#add-product").addEventListener("click", () => {
-    if (demoPreviewActive) openDemoProductEditor();
-    else openProductEditor();
+    openProductEditor();
   });
   document.querySelectorAll("[data-close-product]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -1023,7 +926,6 @@ function bindAdminEvents() {
     if (event.target.id === "confirm-modal") resolveConfirm(false);
   });
   document.querySelector("#sign-out").addEventListener("click", signOut);
-    document.querySelector("#demo-preview").addEventListener("click", showDemoPreview);
   }
 
 if (!supabaseClient) {

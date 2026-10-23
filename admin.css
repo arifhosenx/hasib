@@ -39,8 +39,6 @@ input[type="checkbox"] { width: 15px; min-height: 15px; height: 15px; accent-col
 .primary-button:hover { background: #33352e; transform: translateY(-1px); }
 .primary-button:disabled { opacity: .6; cursor: wait; transform: none; }
 .compact { min-height: 38px; white-space: nowrap; }
-.demo-button { width: 100%; min-height: 42px; margin-top: 12px; padding: 0 12px; border: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; background: transparent; color: var(--ink); font-size: 10px; font-weight: 700; cursor: pointer; }
-.demo-button:hover { border-color: var(--ink); background: #f8f7f2; }
 .back-to-store { display: inline-block; margin-top: 24px; color: var(--muted); font-size: 10px; }
 .form-error { min-height: 0; margin: 0; color: var(--red); font-size: 10px; line-height: 1.6; }
 .notice, .payment-warning { padding: 12px 14px; border-left: 3px solid #a2bd31; background: #f2f5e4; color: #45483a; font-size: 10px; line-height: 1.7; }
@@ -69,7 +67,6 @@ input[type="checkbox"] { width: 15px; min-height: 15px; height: 15px; accent-col
 .admin-alert { margin-top: 20px; padding: 12px 15px; border-left: 3px solid var(--ink); background: #fffefb; font-size: 10px; }
 .admin-alert.error { border-color: var(--red); color: #7e2921; background: #fff2f0; }
 .admin-alert.success { border-color: #91a72f; color: #394b1c; background: #f2f5e4; }
-.admin-alert.demo-notice { border-color: #a2bd31; color: #45483a; background: #f2f5e4; }
 .view { padding-top: 30px; display: none; }
 .view.active { display: block; }
 .welcome-card { min-height: 218px; padding: 32px 35px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: space-between; background: var(--acid); }

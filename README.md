@@ -33,8 +33,6 @@ A responsive streetwear storefront with a Supabase-backed admin portal for the p
 
 All admin pages require a signed-in account explicitly listed in `admin_users`. Row-level security keeps customer records, orders, and management operations private. Storefront order placement and discount validation use database functions that check current prices, stock, promotions, and delivery settings on the server.
 
-The admin login page also has a **Preview dashboard with sample data** option. All admin sections can be browsed in this read-only preview; it is not connected to a database, and changes are not saved.
-
 ## Run locally
 
 From this folder, start any static HTTP server. For example:
