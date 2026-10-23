@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#171916" />
+    <title>Admin — RELAXBD Control Room</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="admin.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+    <script src="config.js" defer></script>
+    <script src="admin.js" defer></script>
+  </head>
+  <body>
+    <main id="login-screen" class="login-screen">
+      <a class="admin-mark" href="index.html">RELAXBD<span> / CONTROL ROOM</span></a>
+      <section class="login-card">
+        <p class="eyebrow">THE PEOPLE BEHIND THE DROP</p>
+        <h1>Welcome<br />back.</h1>
+        <p class="login-description">Sign in to manage your store, products, and orders.</p>
+        <p id="setup-message" class="notice" hidden></p>
+        <form id="login-form">
+          <label>Email address<input name="email" type="email" autocomplete="username" required /></label>
+          <label>Password<input name="password" type="password" autocomplete="current-password" required /></label>
+          <p class="form-error" id="login-error" role="alert"></p>
+          <button class="primary-button" type="submit">Sign in <span>↗</span></button>
+        </form>
+        <button class="demo-button" id="demo-preview" type="button">Preview dashboard with sample data <span>↗</span></button>
+        <a class="back-to-store" href="index.html">← Back to the storefront</a>
+      </section>
+    </main>
+
+    <div id="admin-app" class="admin-app" hidden>
+      <aside class="sidebar" id="sidebar">
+        <a class="admin-mark" href="index.html">RELAXBD<span> / CONTROL ROOM</span></a>
+        <p class="sidebar-label">YOUR WORKSPACE</p>
+        <nav class="sidebar-nav" aria-label="Admin navigation">
+          <button type="button" class="nav-item active" data-view="overview"><span>↗</span> Overview</button>
+          <button type="button" class="nav-item" data-view="products"><span>□</span> Products <b id="nav-product-count"></b></button>
+          <button type="button" class="nav-item" data-view="categories"><span>▦</span> Categories</button>
+          <button type="button" class="nav-item" data-view="orders"><span>↔</span> Orders <b id="nav-order-count"></b></button>
+          <button type="button" class="nav-item" data-view="customers"><span>◎</span> Customers</button>
+          <button type="button" class="nav-item" data-view="promotions"><span>%</span> Promotions</button>
+          <span class="sidebar-label sidebar-label-spaced">YOUR STOREFRONT</span>
+          <button type="button" class="nav-item" data-view="content"><span>✎</span> Website content</button>
+          <button type="button" class="nav-item" data-view="settings"><span>⚙</span> Store settings</button>
+        </nav>
+        <div class="sidebar-bottom">
+          <a href="index.html" target="_blank" rel="noreferrer">View storefront <span>↗</span></a>
+          <button id="sign-out" type="button">Sign out <span>⇥</span></button>
+        </div>
+      </aside>
+
+      <section class="workspace">
+        <header class="workspace-header">
+          <button class="mobile-menu-button" id="mobile-menu-button" type="button" aria-label="Toggle navigation">☰</button>
+          <div><p class="eyebrow">RELAXBD / <span id="current-section-label">OVERVIEW</span></p><h1 id="workspace-title">Good to see you.</h1></div>
+          <div class="admin-user"><span class="user-avatar">O</span><span id="admin-email">Store admin</span></div>
+        </header>
+        <div id="admin-alert" class="admin-alert" role="status" hidden></div>
+
+        <section class="view active" id="view-overview">
+          <div class="welcome-card"><div><p class="eyebrow">YOUR STORE, AT A GLANCE</p><h2>A good day to<br /><span>make a little noise.</span></h2></div><a class="light-button" href="index.html" target="_blank" rel="noreferrer">Visit your storefront ↗</a><span class="welcome-mark">O.</span></div>
+          <div class="metric-grid">
+            <article class="metric-card"><span>NET SALES</span><strong id="metric-sales">৳0</strong><small>Across all orders</small></article>
+            <article class="metric-card"><span>ORDERS</span><strong id="metric-orders">0</strong><small id="metric-pending">No orders waiting</small></article>
+            <article class="metric-card"><span>PRODUCTS</span><strong id="metric-products">0</strong><small id="metric-stock">Your live catalog</small></article>
+            <article class="metric-card"><span>PAYMENT REVIEW</span><strong id="metric-payments">0</strong><small>bKash TxIDs to verify</small></article>
+          </div>
+          <div class="dashboard-section section-card"><div class="section-title"><div><p class="eyebrow">FRESH FROM YOUR SHOP</p><h2>Recent orders</h2></div><button class="subtle-button" data-go="orders" type="button">All orders ↗</button></div><div id="recent-orders" class="table-wrap"></div></div>
+          <div class="dashboard-section section-card"><div class="section-title"><div><p class="eyebrow">A LITTLE HEADS-UP</p><h2>Running low</h2></div><button class="subtle-button" data-go="products" type="button">Manage products ↗</button></div><div id="low-stock-list"></div></div>
+        </section>
+
+        <section class="view" id="view-products">
+          <div class="section-card"><div class="section-title"><div><p class="eyebrow">YOUR LIVE CATALOG</p><h2>All products</h2><p class="section-description">Update prices, product details, photos, and stock. Changes appear in the storefront right away.</p></div><button class="primary-button compact" id="add-product" type="button">Add a product <span>＋</span></button></div><div id="products-table" class="table-wrap"></div><div class="table-pagination" id="products-pagination"></div></div>
+          <div class="section-card product-editor" id="product-editor" hidden>
+            <div class="section-title"><div><p class="eyebrow">YOUR NEXT DROP</p><h2 id="product-form-title">Add a product</h2></div><button class="icon-close" type="button" data-close-product aria-label="Close product editor">×</button></div>
+            <form id="product-form" class="form-grid">
+              <input type="hidden" name="id" />
+              <label>Product name<input name="name" required maxlength="140" /></label>
+              <label>Category<select name="category" required></select></label>
+              <label>Subtitle / color / fit<input name="subtitle" maxlength="180" /></label>
+              <label>Price (৳)<input name="price" type="number" min="0" step="1" required /></label>
+              <label>Compare-at price (৳)<input name="compare_at_price" type="number" min="0" step="1" /></label>
+              <label>Stock quantity<input name="stock" type="number" min="0" step="1" required value="0" /></label>
+              <label>Product label<input name="badge" maxlength="40" value="Just in" /></label>
+              <label>Photo URL<input name="image" type="url" required placeholder="https://…" /></label>
+              <label class="form-wide">Image description<input name="alt" maxlength="180" /></label>
+              <label class="checkbox-label"><input name="active" type="checkbox" checked /> Show in storefront</label>
+              <label class="checkbox-label"><input name="featured" type="checkbox" /> Feature this product</label>
+              <p id="product-form-error" class="form-error form-wide" role="alert"></p>
+              <div class="form-actions form-wide"><button class="subtle-button" type="button" data-close-product>Cancel</button><button class="primary-button compact" type="submit">Save product <span>↗</span></button></div>
+            </form>
+          </div>
+        </section>
+
+        <section class="view" id="view-categories">
+          <div class="section-card"><div class="section-title"><div><p class="eyebrow">MAKE ROOM FOR SOMETHING NEW</p><h2>Categories</h2><p class="section-description">Every product belongs to a category. Delete a category only after moving or archiving its products.</p></div></div><form id="category-form" class="inline-form"><label for="category-name">New category</label><input id="category-name" maxlength="60" placeholder="e.g. Hoodies" required /><button class="primary-button compact" type="submit">Add category <span>＋</span></button></form><div id="categories-list" class="category-list"></div></div>
+        </section>
+
+        <section class="view" id="view-orders">
+          <div class="section-card"><div class="section-title"><div><p class="eyebrow">THE GOOD STUFF HAPPENS HERE</p><h2>Orders & payments</h2><p class="section-description">Review bKash transaction IDs before marking a payment verified. Cancelling an order returns its stock automatically.</p></div><select id="order-filter" class="table-filter" aria-label="Filter orders"><option value="all">All orders</option><option value="payment_review">Payment review</option><option value="pending">New</option><option value="processing">Processing</option><option value="shipped">Shipped</option><option value="delivered">Delivered</option><option value="cancelled">Cancelled</option></select></div><div id="orders-table" class="table-wrap"></div><div class="table-pagination" id="orders-pagination"></div></div>
+        </section>
+
+        <section class="view" id="view-customers">
+          <div class="section-card"><div class="section-title"><div><p class="eyebrow">PEOPLE WHO MAKE THE DROP</p><h2>Customers</h2><p class="section-description">Customer contact details are visible only to signed-in store admins.</p></div></div><div id="customers-table" class="table-wrap"></div><div class="table-pagination" id="customers-pagination"></div></div>
+        </section>
+
+        <section class="view" id="view-promotions">
+          <div class="section-card"><div class="section-title"><div><p class="eyebrow">A LITTLE SOMETHING EXTRA</p><h2>Promotions</h2><p class="section-description">Discount codes are validated by the database when an order is placed. Usage limits and minimums are enforced server-side.</p></div></div><form id="promotion-form" class="form-grid promotion-form">
+            <label>Code<input name="code" required maxlength="32" pattern="[A-Za-z0-9_-]{3,32}" /></label><label>Description<input name="description" maxlength="140" /></label>
+            <label>Discount type<select name="discount_type"><option value="percentage">Percentage</option><option value="fixed">Fixed amount</option></select></label><label>Discount value<input name="discount_value" type="number" min="1" required /></label>
+            <label>Minimum spend (৳)<input name="min_subtotal" type="number" min="0" value="0" /></label><label>Usage limit <span class="field-hint">(leave empty for unlimited)</span><input name="usage_limit" type="number" min="1" /></label>
+            <div class="form-actions form-wide"><button class="primary-button compact" type="submit">Create code <span>＋</span></button></div><p id="promotion-form-error" class="form-error form-wide" role="alert"></p>
+          </form><div id="promotions-list" class="table-wrap"></div></div>
+        </section>
+
+        <section class="view" id="view-content">
+          <div class="section-card"><div class="section-title"><div><p class="eyebrow">THE FIRST HELLO</p><h2>Homepage & brand</h2><p class="section-description">Your updates appear on the public storefront as soon as you save.</p></div></div><form id="content-form" class="form-grid">
+            <label class="form-wide">Announcement bar<input name="announcement" maxlength="140" /></label>
+            <label class="form-wide">Announcement detail<input name="announcement_detail" maxlength="140" /></label>
+            <label>Hero eyebrow<input name="hero_eyebrow" maxlength="100" /></label><label>Hero photo URL<input name="hero_image" type="url" /></label>
+            <label>Hero line 1<input name="hero_line_1" maxlength="22" /></label><label>Hero line 2<input name="hero_line_2" maxlength="22" /></label><label>Hero line 3<input name="hero_line_3" maxlength="22" /></label>
+            <label class="form-wide">Hero photo description<input name="hero_image_alt" maxlength="180" /></label><label class="form-wide">Hero description<textarea name="hero_description" rows="3" maxlength="350"></textarea></label>
+            <label>Collection line 1<input name="collection_line_1" maxlength="24" /></label><label>Collection line 2<input name="collection_line_2" maxlength="24" /></label>
+            <label class="form-wide">Collection description<textarea name="collection_description" rows="3" maxlength="350"></textarea></label>
+            <label>Story kicker<input name="story_kicker" maxlength="100" /></label><label>Story photo URL<input name="story_image" type="url" /></label>
+            <label>Story line 1<input name="story_line_1" maxlength="22" /></label><label>Story line 2<input name="story_line_2" maxlength="22" /></label><label>Story line 3<input name="story_line_3" maxlength="22" /></label><label>Story line 4<input name="story_line_4" maxlength="22" /></label>
+            <label class="form-wide">Story description<textarea name="story_description" rows="3" maxlength="500"></textarea></label><label class="form-wide">Story photo description<input name="story_image_alt" maxlength="180" /></label>
+            <div class="form-wide faq-editor"><div class="faq-editor-heading"><div><p class="eyebrow">THE HELPFUL BITS</p><h3>Frequently asked questions</h3></div><button class="subtle-button" id="add-faq" type="button">Add a question ＋</button></div><div id="faq-fields"></div></div>
+            <p id="content-form-error" class="form-error form-wide" role="alert"></p><div class="form-actions form-wide"><button class="primary-button compact" type="submit">Save website content <span>↗</span></button></div>
+          </form></div>
+        </section>
+
+        <section class="view" id="view-settings">
+          <div class="section-card"><div class="section-title"><div><p class="eyebrow">THE DETAILS THAT KEEP THINGS MOVING</p><h2>Store settings</h2><p class="section-description">Add your real payment number and contact details before taking customer orders.</p></div></div><form id="settings-form" class="form-grid">
+            <label>Contact phone<input name="contact_phone" type="tel" maxlength="32" required /></label><label>Contact email<input name="contact_email" type="email" maxlength="150" required /></label>
+            <label>bKash number (Send Money)<input name="bkash_number" type="tel" maxlength="32" placeholder="Your bKash merchant/personal number" /></label><label>WhatsApp number<input name="whatsapp_number" type="tel" maxlength="32" /></label>
+            <label>Facebook Page URL<input name="facebook_url" type="url" maxlength="255" placeholder="https://www.facebook.com/your-page" /></label>
+            <label>Delivery fee (৳)<input name="delivery_fee" type="number" min="0" step="1" required /></label><label>Free delivery above (৳)<input name="free_shipping_threshold" type="number" min="0" step="1" /><span class="field-hint">0 means free-delivery threshold is turned off.</span></label>
+            <p class="payment-warning form-wide">Add the WhatsApp number and Facebook Page URL to show customer contact buttons on the storefront. WhatsApp needs your country code (for Bangladesh, start with 880). bKash payments are verified manually by your team.</p>
+            <p id="settings-form-error" class="form-error form-wide" role="alert"></p><div class="form-actions form-wide"><button class="primary-button compact" type="submit">Save store settings <span>↗</span></button></div>
+          </form></div>
+        </section>
+      </section>
+    </div>
+    <div id="confirm-modal" class="confirm-modal" hidden><div><p class="eyebrow">ONE LAST CHECK</p><h2 id="confirm-title">Are you sure?</h2><p id="confirm-message"></p><div><button id="confirm-cancel" class="subtle-button" type="button">Keep it</button><button id="confirm-accept" class="danger-button" type="button">Yes, continue</button></div></div></div>
+  </body>
+</html>
