@@ -5,7 +5,7 @@ A responsive streetwear storefront with a Supabase-backed admin portal for the p
 ## Set up the shared store database
 
 1. Create a [Supabase project](https://supabase.com/dashboard) and open **SQL Editor**.
-2. Run [`supabase/schema.sql`](./supabase/schema.sql). It creates the tables, storefront policies, admin-only data access, sample products, and secure order and discount functions.
+2. Run [`supabase/schema.sql`](./supabase/schema.sql). It creates the tables, storefront policies, admin-only data access, a public product-image bucket with admin-only uploads (5 MB maximum), sample products, and secure order and discount functions. If you already ran an older version, run the updated SQL again.
 3. In **Project Settings → API**, copy the project URL and the **publishable** key (or legacy `anon` key). Add them to [`config.js`](./config.js):
 
    ```js
@@ -51,8 +51,8 @@ bKash orders use **Send Money**: the customer pays the configured number, then s
 
 ## Admin capabilities
 
-- Add/edit and publish/archive products; set image, category, price, sale price, and stock.
-- Organize storefront categories and see low-stock items.
+- Add/edit and publish/archive products; upload product photos or use image URLs, and set category, price, sale price, and stock.
+- Create, publish, and archive storefront categories and see low-stock items.
 - Review orders and customer contact/delivery details; update fulfilment state.
 - Review submitted bKash transaction IDs and explicitly approve/reject payment; cancelled orders automatically return stock.
 - Create/pause promotion codes with a percentage or fixed discount, minimum spend, and usage limit.

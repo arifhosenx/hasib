@@ -79,28 +79,57 @@
         <section class="view" id="view-products">
           <div class="section-card"><div class="section-title"><div><p class="eyebrow">YOUR LIVE CATALOG</p><h2>All products</h2><p class="section-description">Update prices, product details, photos, and stock. Changes appear in the storefront right away.</p></div><button class="primary-button compact" id="add-product" type="button">Add a product <span>＋</span></button></div><div id="products-table" class="table-wrap"></div><div class="table-pagination" id="products-pagination"></div></div>
           <div class="section-card product-editor" id="product-editor" hidden>
-            <div class="section-title"><div><p class="eyebrow">YOUR NEXT DROP</p><h2 id="product-form-title">Add a product</h2></div><button class="icon-close" type="button" data-close-product aria-label="Close product editor">×</button></div>
-            <form id="product-form" class="form-grid">
+            <div class="section-title product-editor-heading"><div><p class="eyebrow">YOUR NEXT DROP</p><h2 id="product-form-title">Add a product</h2><p class="section-description">Add the details and a clear product photo. You can preview the image before publishing.</p></div><button class="icon-close" type="button" data-close-product aria-label="Close product editor">×</button></div>
+            <form id="product-form" class="product-form-layout">
               <input type="hidden" name="id" />
-              <label>Product name<input name="name" required maxlength="140" /></label>
-              <label>Category<select name="category" required></select></label>
-              <label>Subtitle / color / fit<input name="subtitle" maxlength="180" /></label>
-              <label>Price (৳)<input name="price" type="number" min="0" step="1" required /></label>
-              <label>Compare-at price (৳)<input name="compare_at_price" type="number" min="0" step="1" /></label>
-              <label>Stock quantity<input name="stock" type="number" min="0" step="1" required value="0" /></label>
-              <label>Product label<input name="badge" maxlength="40" value="Just in" /></label>
-              <label>Photo URL<input name="image" type="url" required placeholder="https://…" /></label>
-              <label class="form-wide">Image description<input name="alt" maxlength="180" /></label>
-              <label class="checkbox-label"><input name="active" type="checkbox" checked /> Show in storefront</label>
-              <label class="checkbox-label"><input name="featured" type="checkbox" /> Feature this product</label>
-              <p id="product-form-error" class="form-error form-wide" role="alert"></p>
-              <div class="form-actions form-wide"><button class="subtle-button" type="button" data-close-product>Cancel</button><button class="primary-button compact" type="submit">Save product <span>↗</span></button></div>
+              <div class="product-fields">
+                <label>Product name<input name="name" required maxlength="140" placeholder="e.g. Core heavyweight tee" /></label>
+                <label>Category<select name="category" required></select></label>
+                <label>Subtitle / color / fit<input name="subtitle" maxlength="180" placeholder="Black · Relaxed fit" /></label>
+                <label>Product label<input name="badge" maxlength="40" value="Just in" placeholder="New, Bestseller..." /></label>
+                <label>Price (৳)<input name="price" type="number" min="0" step="1" required placeholder="1290" /></label>
+                <label>Compare-at price (৳)<input name="compare_at_price" type="number" min="0" step="1" placeholder="Optional sale price" /></label>
+                <label>Stock quantity<input name="stock" type="number" min="0" step="1" required value="0" /></label>
+                <label class="image-url-field">Or use an image URL<input name="image" type="url" placeholder="https://example.com/product.jpg" /></label>
+                <div class="image-upload-field">
+                  <span class="field-label">Product photo</span>
+                  <label class="upload-dropzone" for="product-image-file">
+                    <input id="product-image-file" name="image_file" type="file" accept="image/jpeg,image/png,image/webp,image/avif" />
+                    <span class="upload-icon" aria-hidden="true">↑</span>
+                    <span><strong>Choose a photo to upload</strong><small>JPG, PNG, WebP or AVIF · up to 5 MB</small></span>
+                  </label>
+                  <span class="field-hint" id="image-upload-status">Upload directly from your device, or paste an image URL.</span>
+                </div>
+                <label class="form-wide">Image description<input name="alt" maxlength="180" placeholder="Describe the product photo" /></label>
+                <div class="product-options form-wide">
+                  <label class="checkbox-label"><input name="active" type="checkbox" checked /> Show in storefront</label>
+                  <label class="checkbox-label"><input name="featured" type="checkbox" /> Feature this product</label>
+                </div>
+              </div>
+              <aside class="product-image-preview" aria-label="Product image preview">
+                <span class="preview-kicker">PHOTO PREVIEW</span>
+                <img id="product-image-preview" alt="" hidden />
+                <div class="image-preview-empty" id="product-image-empty"><span aria-hidden="true">＋</span><strong>Your product photo</strong><small>Preview appears here</small></div>
+                <span class="preview-caption" id="product-image-caption">A clear, well-lit photo works best.</span>
+              </aside>
+              <p id="product-form-error" class="form-error product-form-wide" role="alert"></p>
+              <div class="form-actions product-form-wide"><button class="subtle-button" type="button" data-close-product>Cancel</button><button class="primary-button compact" type="submit">Save product <span>↗</span></button></div>
             </form>
           </div>
         </section>
 
         <section class="view" id="view-categories">
-          <div class="section-card"><div class="section-title"><div><p class="eyebrow">MAKE ROOM FOR SOMETHING NEW</p><h2>Categories</h2><p class="section-description">Every product belongs to a category. Delete a category only after moving or archiving its products.</p></div></div><form id="category-form" class="inline-form"><label for="category-name">New category</label><input id="category-name" maxlength="60" placeholder="e.g. Hoodies" required /><button class="primary-button compact" type="submit">Add category <span>＋</span></button></form><div id="categories-list" class="category-list"></div></div>
+          <div class="section-card">
+            <div class="section-title"><div><p class="eyebrow">ORGANIZE YOUR COLLECTION</p><h2>Categories</h2><p class="section-description">Create categories for your storefront and choose them while adding a product. Archive a category after moving or archiving its products.</p></div><span class="category-count" id="category-count">0 categories</span></div>
+            <form id="category-form" class="category-create-card">
+              <span class="category-create-icon" aria-hidden="true">＋</span>
+              <div class="category-create-copy"><strong>Add a category</strong><span>Give a group of products a clear place in your shop.</span></div>
+              <label class="category-name-field" for="category-name"><span class="field-label">Category name</span><input id="category-name" maxlength="60" placeholder="e.g. Hoodies, Pants, Accessories" required /></label>
+              <button class="primary-button compact" type="submit">Create category <span>↗</span></button>
+            </form>
+            <div class="category-list-heading"><span>YOUR CATEGORIES</span><span>Use these on your products</span></div>
+            <div id="categories-list" class="category-list"></div>
+          </div>
         </section>
 
         <section class="view" id="view-orders">

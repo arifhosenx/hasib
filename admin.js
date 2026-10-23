@@ -56,6 +56,7 @@ let customerCount = 0;
 let toastTimer;
 let demoPreviewActive = false;
 let demoControlStates = [];
+let productImagePreviewUrl = "";
 
 const html = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
@@ -204,6 +205,7 @@ function showDemoPreview() {
     { slug: "bottoms", name: "Bottoms", active: true },
     { slug: "accessories", name: "Accessories", active: true }
   ];
+  renderCategories();
   products = [
     { id: "demo-product-1", name: "Core heavyweight tee", subtitle: "Black · Relaxed fit", category: "t-shirts", price: 1290, compare_at_price: 1590, stock: 2, active: true, featured: true, badge: "Best seller", image: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=120&q=80", alt: "Black heavyweight t-shirt" },
     { id: "demo-product-2", name: "Everyday relaxed shirt", subtitle: "Natural · Boxy fit", category: "shirts", price: 1890, stock: 4, active: true, featured: false, badge: "Just in", image: "https://images.unsplash.com/photo-1598033129183-c4f50c736f10?auto=format&fit=crop&w=120&q=80", alt: "Relaxed fit shirt" },
@@ -218,9 +220,6 @@ function showDemoPreview() {
   fillForm(document.querySelector("#content-form"), store);
   fillForm(document.querySelector("#settings-form"), store);
   renderFaqFields(store.faqs);
-  document.querySelector("#categories-list").innerHTML = categories.map((category) => `
-    <article class="category-item"><span>${html(category.name)}</span><button type="button" disabled aria-label="Archive ${html(category.name)}">×</button></article>
-  `).join("");
   document.querySelector("#product-form select[name=category]").innerHTML = categories
     .map((category) => `<option value="${html(category.slug)}">${html(category.name)}</option>`).join("");
   renderProducts();
@@ -238,9 +237,28 @@ function showDemoPreview() {
   }
   renderRecentOrders();
   renderLowStock();
-  demoControlStates = [...adminApp.querySelectorAll("input, select, textarea, button:not(.nav-item):not([data-go]):not(#sign-out):not(#mobile-menu-button)")]
+  demoControlStates = [...adminApp.querySelectorAll("input, select, textarea, button:not(.nav-item):not([data-go]):not(#sign-out):not(#mobile-menu-button):not(#add-product):not([data-close-product])")]
     .map((control) => [control, control.disabled]);
   demoControlStates.forEach(([control]) => { control.disabled = true; });
+}
+
+function openDemoProductEditor() {
+  openProductEditor();
+  const sample = products[0];
+  const form = document.querySelector("#product-form");
+  form.elements.name.value = "New RELAXBD product";
+  form.elements.subtitle.value = "Stone · Relaxed fit";
+  form.elements.price.value = "1890";
+  form.elements.compare_at_price.value = "";
+  form.elements.stock.value = "12";
+  form.elements.badge.value = "Just in";
+  form.elements.image.value = sample?.image || "";
+  form.elements.alt.value = sample?.alt || "New RELAXBD product";
+  setProductImagePreview(sample?.image || "", "New RELAXBD product");
+  document.querySelector("#image-upload-status").textContent = "Photo upload is disabled in the sample preview.";
+  form.querySelectorAll("input, select, textarea, button").forEach((control) => {
+    if (control.type !== "hidden" && !control.matches("[data-close-product]")) control.disabled = true;
+  });
 }
 
 function emptyTable(message) {
@@ -339,9 +357,11 @@ async function loadCategories() {
 }
 
 function renderCategories() {
+  const categoryCount = document.querySelector("#category-count");
+  if (categoryCount) categoryCount.textContent = `${categories.length} ${categories.length === 1 ? "category" : "categories"}`;
   document.querySelector("#categories-list").innerHTML = categories.length
     ? categories.map((category) => `
-      <article class="category-item"><span>${html(category.name)}${category.active ? "" : " · archived"}</span><button type="button" data-toggle-category="${html(category.slug)}" data-active="${category.active}" aria-label="${category.active ? "Archive" : "Publish"} ${html(category.name)}">${category.active ? "×" : "↗"}</button></article>
+      <article class="category-item ${category.active ? "" : "archived"}"><span>${html(category.name)}${category.active ? "" : "<small>Archived</small>"}</span><button type="button" data-toggle-category="${html(category.slug)}" data-active="${category.active}" aria-label="${category.active ? "Archive" : "Publish"} ${html(category.name)}">${category.active ? "×" : "↗"}</button></article>
     `).join("")
     : `<p class="table-muted">No categories yet.</p>`;
   const select = document.querySelector("#product-form select[name=category]");
@@ -354,6 +374,7 @@ function renderCategories() {
 function openProductEditor(product = null) {
   const editor = document.querySelector("#product-editor");
   const form = document.querySelector("#product-form");
+  clearProductImagePreview();
   form.reset();
   form.elements.id.value = product?.id || "";
   form.elements.name.value = product?.name || "";
@@ -367,10 +388,41 @@ function openProductEditor(product = null) {
   form.elements.alt.value = product?.alt || "";
   form.elements.active.checked = product?.active ?? true;
   form.elements.featured.checked = product?.featured ?? false;
+  document.querySelector("#product-image-file").value = "";
+  document.querySelector("#image-upload-status").textContent = "Upload directly from your device, or paste an image URL.";
+  setProductImagePreview(product?.image || "", product?.name || "");
   document.querySelector("#product-form-title").textContent = product ? "Edit a product" : "Add a product";
   document.querySelector("#product-form-error").textContent = "";
   editor.hidden = false;
   editor.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function clearProductImagePreview() {
+  if (productImagePreviewUrl) URL.revokeObjectURL(productImagePreviewUrl);
+  productImagePreviewUrl = "";
+}
+
+function setProductImagePreview(src, caption = "") {
+  const image = document.querySelector("#product-image-preview");
+  const empty = document.querySelector("#product-image-empty");
+  const captionRoot = document.querySelector("#product-image-caption");
+  image.onerror = () => {
+    image.hidden = true;
+    empty.hidden = false;
+    captionRoot.textContent = "This image could not be previewed. Check the URL or choose another photo.";
+  };
+  if (!src) {
+    image.removeAttribute("src");
+    image.hidden = true;
+    empty.hidden = false;
+    captionRoot.textContent = "A clear, well-lit photo works best.";
+    return;
+  }
+  image.src = src;
+  image.alt = caption ? `${caption} preview` : "Product image preview";
+  image.hidden = false;
+  empty.hidden = true;
+  captionRoot.textContent = caption || "Product image preview";
 }
 
 async function saveProduct(event) {
@@ -385,6 +437,8 @@ async function saveProduct(event) {
     errorRoot.textContent = "Enter a valid price. The compare-at price must be higher than the current price.";
     return;
   }
+  const imageFile = form.elements.image_file.files[0];
+  const imageUrl = imageFile ? "" : safeImage(values.get("image"));
   const product = {
     name: String(values.get("name")).trim(),
     category: String(values.get("category")),
@@ -393,24 +447,55 @@ async function saveProduct(event) {
     compare_at_price: compareAt,
     stock: Number(values.get("stock")),
     badge: String(values.get("badge") || "Just in").trim(),
-    image: safeImage(values.get("image")),
+    image: imageUrl,
     alt: String(values.get("alt") || "").trim(),
     active: values.has("active"),
     featured: values.has("featured")
   };
-  if (!product.image) {
-    errorRoot.textContent = "Add a valid image URL beginning with https:// or http://.";
+  if (!imageFile && !product.image) {
+    errorRoot.textContent = "Upload a product photo or add a valid image URL beginning with https:// or http://.";
+    return;
+  }
+  if (imageFile && (!imageFile.type.startsWith("image/") || !["image/jpeg", "image/png", "image/webp", "image/avif"].includes(imageFile.type))) {
+    errorRoot.textContent = "Choose a JPG, PNG, WebP or AVIF image.";
+    return;
+  }
+  if (imageFile && imageFile.size > 5 * 1024 * 1024) {
+    errorRoot.textContent = "Product photos must be 5 MB or smaller.";
     return;
   }
   const id = String(values.get("id") || "");
+  let uploadedImagePath = "";
+  if (imageFile) {
+    const extension = ({ "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/avif": "avif" })[imageFile.type];
+    uploadedImagePath = `products/${crypto.randomUUID()}.${extension}`;
+    document.querySelector("#image-upload-status").textContent = "Uploading your photo…";
+    const { error: uploadError } = await supabaseClient.storage.from("product-images").upload(uploadedImagePath, imageFile, {
+      cacheControl: "31536000",
+      contentType: imageFile.type,
+      upsert: false
+    });
+    if (uploadError) {
+      console.error("Could not upload product image.", uploadError);
+      document.querySelector("#image-upload-status").textContent = "Photo upload failed.";
+      errorRoot.textContent = `Could not upload the photo: ${uploadError.message}. Confirm the product-images storage bucket is set up from supabase/schema.sql.`;
+      return;
+    }
+    product.image = supabaseClient.storage.from("product-images").getPublicUrl(uploadedImagePath).data.publicUrl;
+  }
   const result = id
     ? await supabaseClient.from("products").update(product).eq("id", id)
     : await supabaseClient.from("products").insert(product);
   if (result.error) {
     console.error("Could not save product.", result.error);
-    errorRoot.textContent = result.error.message;
+    if (uploadedImagePath) {
+      const { error: cleanupError } = await supabaseClient.storage.from("product-images").remove([uploadedImagePath]);
+      if (cleanupError) console.error("Could not remove the image uploaded for the failed product save.", cleanupError);
+    }
+    errorRoot.textContent = `${result.error.message}${uploadedImagePath ? " The uploaded image was not attached to a product." : ""}`;
     return;
   }
+  clearProductImagePreview();
   document.querySelector("#product-editor").hidden = true;
   notify(id ? "Product updated." : "Product added.");
   await loadProducts();
@@ -439,12 +524,9 @@ async function addCategory(event) {
   event.preventDefault();
   const input = document.querySelector("#category-name");
   const name = input.value.trim();
-  const slug = name.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
+  const baseSlug = name.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  if (!slug) {
-    notify("Use letters or numbers in the category name.", "error");
-    return;
-  }
+  const slug = baseSlug || `category-${crypto.randomUUID().slice(0, 8)}`;
   const { error } = await supabaseClient.from("categories").insert({ slug, name });
   if (error) {
     console.error("Could not add category.", error);
@@ -855,9 +937,33 @@ function bindAdminEvents() {
   document.querySelector("#mobile-menu-button").addEventListener("click", () => {
     document.querySelector("#sidebar").classList.toggle("open");
   });
-  document.querySelector("#add-product").addEventListener("click", () => openProductEditor());
+  document.querySelector("#add-product").addEventListener("click", () => {
+    if (demoPreviewActive) openDemoProductEditor();
+    else openProductEditor();
+  });
   document.querySelectorAll("[data-close-product]").forEach((button) => {
-    button.addEventListener("click", () => { document.querySelector("#product-editor").hidden = true; });
+    button.addEventListener("click", () => {
+      document.querySelector("#product-editor").hidden = true;
+      clearProductImagePreview();
+    });
+  });
+  document.querySelector("#product-image-file").addEventListener("change", (event) => {
+    const file = event.currentTarget.files[0];
+    if (!file) {
+      document.querySelector("#image-upload-status").textContent = "Upload directly from your device, or paste an image URL.";
+      return;
+    }
+    clearProductImagePreview();
+    productImagePreviewUrl = URL.createObjectURL(file);
+    document.querySelector("#image-upload-status").textContent = `${file.name} · ${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+    setProductImagePreview(productImagePreviewUrl, file.name);
+  });
+  document.querySelector("#product-form").elements.image.addEventListener("input", (event) => {
+    const fileInput = document.querySelector("#product-image-file");
+    if (fileInput.files.length) fileInput.value = "";
+    clearProductImagePreview();
+    document.querySelector("#image-upload-status").textContent = "Using the image URL below.";
+    setProductImagePreview(safeImage(event.currentTarget.value), "Product image");
   });
   document.querySelector("#product-form").addEventListener("submit", saveProduct);
   document.querySelector("#products-table").addEventListener("click", (event) => {
