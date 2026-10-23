@@ -366,6 +366,7 @@ function renderProducts() {
         <p class="product-name">${escapeHTML(product.name)}</p>
         <p class="product-price">${formatPrice(product.price)}${product.oldPrice ? `<span class="old-price">${formatPrice(product.oldPrice)}</span>` : ""}</p>
         <p class="product-subtitle">${escapeHTML(product.subtitle)}</p>
+        <a class="product-buy-now" href="product.html?id=${encodeURIComponent(product.id)}">BUY NOW <span aria-hidden="true">↗</span></a>
       </div>
     </article>
   `).join("");
