@@ -18,7 +18,13 @@ const dhakaCitySubdistricts = new Set([
   "Rampura", "Sabujbag", "Shah Ali", "Shahbagh", "Sher-e-Bangla Nagar", "Shyampur", "Sutrapur",
   "Tejgaon", "Tejgaon Industrial Area", "Turag", "Uttar Khan", "Uttara", "Shahjahanpur"
 ]);
-const defaultCheckoutSettings = { dhaka_delivery_fee: 70, outside_dhaka_delivery_fee: 130, free_shipping_threshold: 2500 };
+const defaultCheckoutSettings = {
+  dhaka_delivery_fee: 70,
+  outside_dhaka_delivery_fee: 130,
+  free_shipping_threshold: 2500,
+  bkash_number: "",
+  nagad_number: ""
+};
 let checkoutSettings = { ...defaultCheckoutSettings };
 let orderItems = [];
 let currentStep = 1;
@@ -101,6 +107,12 @@ function selectedDistrict() {
 function selectedSubdistrict() {
   const district = selectedDistrict();
   return district?.upazilas.find((item) => item.name === document.querySelector("#customer-subdistrict").value);
+}
+
+function walletNumberFor(provider = selectedWallet) {
+  const settingNumber = provider === "bkash" ? checkoutSettings.bkash_number : checkoutSettings.nagad_number;
+  const configNumber = provider === "bkash" ? checkoutConfig?.bkashPersonalNumber : checkoutConfig?.nagadPersonalNumber;
+  return String(settingNumber || configNumber || "").trim();
 }
 
 function getShippingFee() {
@@ -203,8 +215,8 @@ function validatePaymentStep() {
   setFieldError("transactionId", transactionValid ? "" : "TrxID ৮–১২টি ইংরেজি বড় হাতের অক্ষর বা সংখ্যা হতে হবে।");
   document.querySelector("#terms-error").textContent = termsAccepted ? "" : "অর্ডার নিশ্চিত করতে শর্তাবলী ও গোপনীয়তা নীতিতে সম্মতি দিন।";
   const validPlan = ["shipping_advance", "full_advance"].includes(checkoutForm.querySelector('input[name="paymentPlan"]:checked')?.value);
-  const walletNumber = selectedWallet === "bkash" ? checkoutConfig?.bkashPersonalNumber : checkoutConfig?.nagadPersonalNumber;
-  document.querySelector("#payment-step-error").textContent = walletNumber ? "" : `${selectedWallet === "bkash" ? "বিকাশ" : "নগদ"} পার্সোনাল নম্বর config.js-এ যোগ করুন।`;
+  const walletNumber = walletNumberFor();
+  document.querySelector("#payment-step-error").textContent = walletNumber ? "" : `${selectedWallet === "bkash" ? "বিকাশ" : "নগদ"} পার্সোনাল নম্বর অ্যাডমিনের Store settings-এ যোগ করুন।`;
   const valid = phoneValid && transactionValid && termsAccepted && validPlan && Boolean(walletNumber);
   if (!phoneValid) getField("payerPhone").focus();
   else if (!transactionValid) getField("transactionId").focus();
@@ -257,7 +269,7 @@ function updateDeliveryPreview() {
 
 function updateWalletDisplay() {
   const isBkash = selectedWallet === "bkash";
-  const walletNumber = isBkash ? checkoutConfig?.bkashPersonalNumber : checkoutConfig?.nagadPersonalNumber;
+  const walletNumber = walletNumberFor(isBkash ? "bkash" : "nagad");
   const label = isBkash ? "বিকাশ" : "নগদ";
   document.querySelectorAll("[data-wallet-tab]").forEach((tab) => {
     const active = tab.dataset.walletTab === selectedWallet;
@@ -268,7 +280,7 @@ function updateWalletDisplay() {
   instructions.classList.toggle("bkash-wallet", isBkash);
   instructions.classList.toggle("nagad-wallet", !isBkash);
   document.querySelector("#wallet-title").textContent = `${label} পার্সোনাল নম্বরে Send Money করুন`;
-  document.querySelector("#wallet-number").textContent = String(walletNumber || "").trim() || `config.js-এ ${label} নম্বর সেট করুন`;
+  document.querySelector("#wallet-number").textContent = String(walletNumber || "").trim() || `অ্যাডমিন Store settings-এ ${label} নম্বর সেট করুন`;
   document.querySelector("#wallet-howto").textContent = `এখন পাঠাবেন অংশে দেখানো ${checkoutPrice(Number(document.querySelector("#advance-amount").textContent.replace(/[^\d]/g, "")))} ${label} Send Money করে TrxID দিন।`;
   document.querySelector("#transaction-field > span").innerHTML = `${label} TrxID <i>*</i>`;
 }
@@ -562,7 +574,7 @@ document.querySelectorAll("[data-wallet-tab]").forEach((tab) => {
 });
 document.querySelector("#copy-wallet-number").addEventListener("click", async (event) => {
   const button = event.currentTarget;
-  const number = String((selectedWallet === "bkash" ? checkoutConfig?.bkashPersonalNumber : checkoutConfig?.nagadPersonalNumber) || "").trim();
+  const number = walletNumberFor();
   const originalText = "কপি";
   if (!number) {
     button.textContent = "নম্বর নেই";

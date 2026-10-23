@@ -84,12 +84,31 @@
               <div class="product-fields">
                 <label>Product name<input name="name" required maxlength="140" placeholder="e.g. Core heavyweight tee" /></label>
                 <label>Category<select name="category" required></select></label>
+                <label>Product code<input name="code" maxlength="40" placeholder="e.g. ROYAL 776" /></label>
                 <label>Subtitle / color / fit<input name="subtitle" maxlength="180" placeholder="Black · Relaxed fit" /></label>
                 <label>Product label<input name="badge" maxlength="40" value="Just in" placeholder="New, Bestseller..." /></label>
                 <label>Price (৳)<input name="price" type="number" min="0" step="1" required placeholder="1290" /></label>
                 <label>Compare-at price (৳)<input name="compare_at_price" type="number" min="0" step="1" placeholder="Optional sale price" /></label>
-                <label>Stock quantity<input name="stock" type="number" min="0" step="1" required value="0" /></label>
+                <div class="product-size-controls form-wide">
+                  <span class="field-label">Size-by-size stock</span>
+                  <div class="size-stock-fields">
+                    <label>M stock<input name="stock_m" type="number" min="0" step="1" required value="0" /></label>
+                    <label>L stock<input name="stock_l" type="number" min="0" step="1" required value="0" /></label>
+                    <label>XL stock<input name="stock_xl" type="number" min="0" step="1" required value="0" /></label>
+                  </div>
+                  <span class="field-hint">Total product stock is calculated from these size quantities.</span>
+                  <span class="field-label">Size guide measurements (inches)</span>
+                  <div class="size-chart-fields">
+                    <label>Chest M<input name="chest_m" type="number" min="0" step="0.5" required value="40" /></label>
+                    <label>Chest L<input name="chest_l" type="number" min="0" step="0.5" required value="42" /></label>
+                    <label>Chest XL<input name="chest_xl" type="number" min="0" step="0.5" required value="44" /></label>
+                    <label>Length M<input name="length_m" type="number" min="0" step="0.5" required value="28" /></label>
+                    <label>Length L<input name="length_l" type="number" min="0" step="0.5" required value="29" /></label>
+                    <label>Length XL<input name="length_xl" type="number" min="0" step="0.5" required value="30" /></label>
+                  </div>
+                </div>
                 <label class="image-url-field">Or use an image URL<input name="image" type="url" placeholder="https://example.com/product.jpg" /></label>
+                <label class="form-wide">Additional product image URLs<textarea name="images" rows="3" placeholder="One https:// image URL per line"></textarea><span class="field-hint">Optional gallery photos shown on the product detail page.</span></label>
                 <div class="image-upload-field">
                   <span class="field-label">Product photo</span>
                   <label class="upload-dropzone" for="product-image-file">
@@ -119,13 +138,14 @@
 
         <section class="view" id="view-categories">
           <div class="section-card">
-            <div class="section-title"><div><p class="eyebrow">ORGANIZE YOUR COLLECTION</p><h2>Categories</h2><p class="section-description">Create categories for your storefront and choose them while adding a product. Archive a category after moving or archiving its products.</p></div><span class="category-count" id="category-count">0 categories</span></div>
+            <div class="section-title"><div><p class="eyebrow">ORGANIZE YOUR COLLECTION</p><h2>Categories</h2><p class="section-description">Create and edit storefront categories, set their card image, and publish or archive them.</p></div><span class="category-count" id="category-count">0 categories</span></div>
             <form id="category-form" class="category-create-card">
+              <input type="hidden" id="category-slug" />
               <span class="category-create-icon" aria-hidden="true">＋</span>
               <div class="category-create-copy"><strong>Add a category</strong><span>Give a group of products a clear place in your shop.</span></div>
               <label class="category-name-field" for="category-name"><span class="field-label">Category name</span><input id="category-name" maxlength="60" placeholder="e.g. Boxy Check Shirt" required /></label>
               <label class="category-image-field" for="category-image"><span class="field-label">Category image URL (optional)</span><input id="category-image" type="url" maxlength="1000" placeholder="https://..." /></label>
-              <button class="primary-button compact" type="submit">Create category <span>↗</span></button>
+              <div class="category-form-actions"><button class="primary-button compact" id="category-submit" type="submit">Create category <span>↗</span></button><button class="subtle-button" id="cancel-category-edit" type="button" hidden>Cancel edit</button></div>
             </form>
             <div class="category-list-heading"><span>YOUR CATEGORIES</span><span>Use these on your products</span></div>
             <div id="categories-list" class="category-list"></div>
@@ -145,6 +165,7 @@
             <label>Code<input name="code" required maxlength="32" pattern="[A-Za-z0-9_-]{3,32}" /></label><label>Description<input name="description" maxlength="140" /></label>
             <label>Discount type<select name="discount_type"><option value="percentage">Percentage</option><option value="fixed">Fixed amount</option></select></label><label>Discount value<input name="discount_value" type="number" min="1" required /></label>
             <label>Minimum spend (৳)<input name="min_subtotal" type="number" min="0" value="0" /></label><label>Usage limit <span class="field-hint">(leave empty for unlimited)</span><input name="usage_limit" type="number" min="1" /></label>
+            <label>Starts at (optional)<input name="starts_at" type="datetime-local" /></label><label>Ends at (optional)<input name="ends_at" type="datetime-local" /></label>
             <div class="form-actions form-wide"><button class="primary-button compact" type="submit">Create code <span>＋</span></button></div><p id="promotion-form-error" class="form-error form-wide" role="alert"></p>
           </form><div id="promotions-list" class="table-wrap"></div></div>
         </section>
@@ -167,7 +188,7 @@
         </section>
 
         <section class="view" id="view-settings">
-          <div class="section-card"><div class="section-title"><div><p class="eyebrow">THE DETAILS THAT KEEP THINGS MOVING</p><h2>Store settings</h2><p class="section-description">Add your contact details before taking customer orders. Checkout wallet numbers are set in config.js.</p></div></div><form id="settings-form" class="form-grid">
+          <div class="section-card"><div class="section-title"><div><p class="eyebrow">THE DETAILS THAT KEEP THINGS MOVING</p><h2>Store settings</h2><p class="section-description">Manage public contact details, checkout wallet numbers, delivery fees, and brand settings from here.</p></div></div><form id="settings-form" class="form-grid">
             <div class="brand-identity-card form-wide">
               <div class="brand-identity-copy"><p class="eyebrow">MAKE IT YOURS</p><h3>Logo & brand color</h3><p>Upload your logo and choose a color that fits it. These update the storefront header, footer, and accent details.</p></div>
               <div class="brand-identity-controls">
@@ -184,8 +205,10 @@
             <label>Contact phone<input name="contact_phone" type="tel" maxlength="32" required /></label><label>Contact email<input name="contact_email" type="email" maxlength="150" required /></label>
             <label>WhatsApp number<input name="whatsapp_number" type="tel" maxlength="32" /></label>
             <label>Facebook Page URL<input name="facebook_url" type="url" maxlength="255" placeholder="https://www.facebook.com/your-page" /></label>
-            <label>Delivery fee (৳)<input name="delivery_fee" type="number" min="0" step="1" required /></label><label>Free delivery above (৳)<input name="free_shipping_threshold" type="number" min="0" step="1" /><span class="field-hint">0 means free-delivery threshold is turned off.</span></label>
-            <p class="payment-warning form-wide">Add the WhatsApp number and Facebook Page URL to show customer contact buttons on the storefront. WhatsApp needs your country code (for Bangladesh, start with 880). Configure bKash/Nagad payment numbers in config.js; wallet payments are verified manually by your team.</p>
+            <label>Dhaka city delivery fee (৳)<input name="dhaka_delivery_fee" type="number" min="0" step="1" required /></label><label>Outside Dhaka delivery fee (৳)<input name="outside_dhaka_delivery_fee" type="number" min="0" step="1" required /></label>
+            <label>Free delivery above (৳)<input name="free_shipping_threshold" type="number" min="0" step="1" /><span class="field-hint">0 means free-delivery threshold is turned off.</span></label>
+            <label>bKash personal number<input name="bkash_number" type="tel" inputmode="numeric" maxlength="16" placeholder="01XXXXXXXXX" /></label><label>Nagad personal number<input name="nagad_number" type="tel" inputmode="numeric" maxlength="16" placeholder="01XXXXXXXXX" /></label>
+            <p class="payment-warning form-wide">WhatsApp links require a country code (for Bangladesh, start with 880). Wallet numbers must be 11 digits and start with 01. Wallet payments are still verified manually by your team.</p>
             <p id="settings-form-error" class="form-error form-wide" role="alert"></p><div class="form-actions form-wide"><button class="primary-button compact" type="submit">Save store settings <span>↗</span></button></div>
           </form></div>
         </section>

@@ -58,12 +58,12 @@ Create and get approval for a WhatsApp template with eight body variables in thi
 
 ## Admin capabilities
 
-- Add/edit and publish/archive products; upload product photos or use image URLs, and set category, price, sale price, and stock.
-- Create, publish, and archive storefront categories, optionally assign category-card image URLs, and see low-stock items.
+- Add/edit and publish/archive products; upload product photos or use image URLs, set category, price and sale price, control M/L/XL stock separately, and edit size-guide measurements.
+- Create/edit, publish, and archive storefront categories, optionally assign category-card image URLs, and see low-stock items.
 - In **Admin → Store settings → Logo & brand color**, choose a transparent PNG (recommended) or JPG/WebP/AVIF logo up to 5 MB, select the matching accent color, then save. The logo appears in the storefront header and footer; use **Use text logo instead** to remove it.
 - Review orders and customer contact/delivery details; update fulfilment state.
 - Review submitted bKash/Nagad transaction IDs and explicitly approve/reject payment; cancelled orders automatically return stock.
-- Create/pause promotion codes with a percentage or fixed discount, minimum spend, and usage limit.
-- Edit the home page, story, FAQs, announcements, contact details, Facebook Page and WhatsApp links, and delivery fees. Set wallet payment numbers in `config.js`.
+- Create/pause promotion codes with a percentage or fixed discount, minimum spend, usage limit, and optional start/end dates.
+- Edit the home page, story, FAQs, announcements, contact details, Facebook Page and WhatsApp links, Dhaka/outside-Dhaka delivery fees, free-shipping threshold, and bKash/Nagad personal numbers from **Store settings**.
 
 The Supabase publishable key can be public only because the included database policies enforce access. Keep the schema and policies in sync with any future database changes.

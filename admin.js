@@ -3,6 +3,10 @@ const settingsDefaults = {
   announcement_detail: "Free delivery on orders over ৳2,500",
   free_shipping_threshold: 2500,
   delivery_fee: 150,
+  dhaka_delivery_fee: 70,
+  outside_dhaka_delivery_fee: 130,
+  bkash_number: "",
+  nagad_number: "",
   hero_eyebrow: "Drop 04 — The everyday edit",
   hero_line_1: "FRESH",
   hero_line_2: "OFF THE",
@@ -204,7 +208,7 @@ async function loadProducts() {
     return loadProducts();
   }
   const paged = await supabaseClient.from("products")
-    .select("id,name,subtitle,category,price,compare_at_price,badge,image,alt,stock,size_stock,active,featured,created_at", { count: "exact" })
+    .select("id,name,subtitle,category,price,compare_at_price,badge,image,images,code,alt,stock,size_stock,size_chart,active,featured,created_at", { count: "exact" })
     .order("created_at", { ascending: false })
     .range(productPage * pageSize, productPage * pageSize + pageSize - 1);
   if (paged.error) {
@@ -269,7 +273,7 @@ function renderCategories() {
   if (categoryCount) categoryCount.textContent = `${categories.length} ${categories.length === 1 ? "category" : "categories"}`;
   document.querySelector("#categories-list").innerHTML = categories.length
     ? categories.map((category) => `
-      <article class="category-item ${category.active ? "" : "archived"}"><span>${html(category.name)}${category.active ? "" : "<small>Archived</small>"}${category.image ? `<small>Custom image set</small>` : ""}</span><button type="button" data-toggle-category="${html(category.slug)}" data-active="${category.active}" aria-label="${category.active ? "Archive" : "Publish"} ${html(category.name)}">${category.active ? "×" : "↗"}</button></article>
+      <article class="category-item ${category.active ? "" : "archived"}"><span>${html(category.name)}${category.active ? "" : "<small>Archived</small>"}${category.image ? `<small>Custom image set</small>` : ""}</span><div class="category-item-actions"><button type="button" data-edit-category="${html(category.slug)}" aria-label="Edit ${html(category.name)}">Edit</button><button type="button" data-toggle-category="${html(category.slug)}" data-active="${category.active}" aria-label="${category.active ? "Archive" : "Publish"} ${html(category.name)}">${category.active ? "×" : "↗"}</button></div></article>
     `).join("")
     : `<p class="table-muted">No categories yet.</p>`;
   const select = document.querySelector("#product-form select[name=category]");
@@ -290,9 +294,28 @@ function openProductEditor(product = null) {
   form.elements.category.value = product?.category || categories.find((category) => category.active)?.slug || "";
   form.elements.price.value = product?.price ?? "";
   form.elements.compare_at_price.value = product?.compare_at_price ?? "";
-  form.elements.stock.value = product?.stock ?? 0;
+  const sizeStock = product?.size_stock && Object.keys(product.size_stock).length
+    ? product.size_stock
+    : (() => {
+      const stock = Math.max(0, Number(product?.stock) || 0);
+      const base = Math.floor(stock / 3);
+      const remainder = stock % 3;
+      return { M: base + (remainder > 0 ? 1 : 0), L: base + (remainder > 1 ? 1 : 0), XL: base };
+    })();
+  form.elements.stock_m.value = sizeStock.M ?? 0;
+  form.elements.stock_l.value = sizeStock.L ?? 0;
+  form.elements.stock_xl.value = sizeStock.XL ?? 0;
+  const chart = product?.size_chart || { chest: { M: 40, L: 42, XL: 44 }, length: { M: 28, L: 29, XL: 30 } };
+  form.elements.chest_m.value = chart.chest?.M ?? 40;
+  form.elements.chest_l.value = chart.chest?.L ?? 42;
+  form.elements.chest_xl.value = chart.chest?.XL ?? 44;
+  form.elements.length_m.value = chart.length?.M ?? 28;
+  form.elements.length_l.value = chart.length?.L ?? 29;
+  form.elements.length_xl.value = chart.length?.XL ?? 30;
   form.elements.badge.value = product?.badge || "Just in";
+  form.elements.code.value = product?.code || "";
   form.elements.image.value = product?.image || "";
+  form.elements.images.value = Array.isArray(product?.images) ? product.images.join("\n") : "";
   form.elements.alt.value = product?.alt || "";
   form.elements.active.checked = product?.active ?? true;
   form.elements.featured.checked = product?.featured ?? false;
@@ -339,15 +362,35 @@ async function saveProduct(event) {
   const values = new FormData(form);
   const price = Number(values.get("price"));
   const compareAt = values.get("compare_at_price") === "" ? null : Number(values.get("compare_at_price"));
-  const stock = Number(values.get("stock"));
+  const sizeStock = {
+    M: Number(values.get("stock_m")),
+    L: Number(values.get("stock_l")),
+    XL: Number(values.get("stock_xl"))
+  };
+  const stock = Object.values(sizeStock).reduce((total, value) => total + value, 0);
+  const sizeChart = {
+    chest: { M: Number(values.get("chest_m")), L: Number(values.get("chest_l")), XL: Number(values.get("chest_xl")) },
+    length: { M: Number(values.get("length_m")), L: Number(values.get("length_l")), XL: Number(values.get("length_xl")) }
+  };
   const errorRoot = document.querySelector("#product-form-error");
   errorRoot.textContent = "";
-  if (!Number.isSafeInteger(price) || price < 0 || !Number.isSafeInteger(stock) || stock < 0 || (compareAt !== null && (!Number.isSafeInteger(compareAt) || compareAt <= price))) {
-    errorRoot.textContent = "Enter a valid price and whole-number stock quantity. The compare-at price must be higher than the current price.";
+  if (!Number.isSafeInteger(price) || price < 0
+    || !Number.isSafeInteger(stock)
+    || Object.values(sizeStock).some((value) => !Number.isSafeInteger(value) || value < 0)
+    || Object.values(sizeChart).some((measurements) => Object.values(measurements).some((value) => !Number.isFinite(value) || value < 0))
+    || (compareAt !== null && (!Number.isSafeInteger(compareAt) || compareAt <= price))) {
+    errorRoot.textContent = "Enter valid prices, non-negative size stock and size measurements. The compare-at price must be higher than the current price.";
     return;
   }
   const imageFile = form.elements.image_file.files[0];
   const imageUrl = imageFile ? "" : safeImage(values.get("image"));
+  const additionalImages = String(values.get("images") || "").split(/\r?\n/).map((url) => url.trim()).filter(Boolean);
+  const safeAdditionalImages = additionalImages.map(safeImage);
+  if (safeAdditionalImages.some((url) => !url)) {
+    errorRoot.textContent = "Every additional image must be a valid http or https URL, one URL per line.";
+    form.elements.images.focus();
+    return;
+  }
   const product = {
     name: String(values.get("name")).trim(),
     category: String(values.get("category")),
@@ -355,13 +398,10 @@ async function saveProduct(event) {
     price,
     compare_at_price: compareAt,
     stock,
-    size_stock: (() => {
-      const existingProduct = products.find((item) => item.id === String(values.get("id") || ""));
-      if (existingProduct && existingProduct.stock === stock) return existingProduct.size_stock || {};
-      const base = Math.floor(stock / 3);
-      const remainder = stock % 3;
-      return { M: base + (remainder > 0 ? 1 : 0), L: base + (remainder > 1 ? 1 : 0), XL: base };
-    })(),
+    size_stock: sizeStock,
+    size_chart: sizeChart,
+    code: String(values.get("code") || "").trim(),
+    images: safeAdditionalImages,
     badge: String(values.get("badge") || "Just in").trim(),
     image: imageUrl,
     alt: String(values.get("alt") || "").trim(),
@@ -399,6 +439,7 @@ async function saveProduct(event) {
     }
     product.image = supabaseClient.storage.from("product-images").getPublicUrl(uploadedImagePath).data.publicUrl;
   }
+  product.images = [...new Set([product.image, ...product.images].filter(Boolean))];
   const result = id
     ? await supabaseClient.from("products").update(product).eq("id", id)
     : await supabaseClient.from("products").insert(product);
@@ -440,8 +481,10 @@ async function addCategory(event) {
   event.preventDefault();
   const input = document.querySelector("#category-name");
   const imageInput = document.querySelector("#category-image");
+  const slugInput = document.querySelector("#category-slug");
   const name = input.value.trim();
   const image = safeImage(imageInput.value.trim());
+  const existingSlug = slugInput.value;
   if (imageInput.value.trim() && !image) {
     notify("Enter a valid http or https image URL.", "error");
     imageInput.focus();
@@ -449,17 +492,39 @@ async function addCategory(event) {
   }
   const baseSlug = name.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  const slug = baseSlug || `category-${crypto.randomUUID().slice(0, 8)}`;
-  const { error } = await supabaseClient.from("categories").insert({ slug, name, image });
+  const slug = existingSlug || baseSlug || `category-${crypto.randomUUID().slice(0, 8)}`;
+  const result = existingSlug
+    ? await supabaseClient.from("categories").update({ name, image }).eq("slug", existingSlug)
+    : await supabaseClient.from("categories").insert({ slug, name, image });
+  const { error } = result;
   if (error) {
     console.error("Could not add category.", error);
     notify(error.message.includes("duplicate") ? "A category with that name already exists." : error.message, "error");
     return;
   }
-  input.value = "";
-  imageInput.value = "";
-  notify("Category added.");
+  resetCategoryForm();
+  notify(existingSlug ? "Category updated." : "Category added.");
   await loadCategories();
+}
+
+function resetCategoryForm() {
+  document.querySelector("#category-form").reset();
+  document.querySelector("#category-slug").value = "";
+  document.querySelector("#category-submit").innerHTML = "Create category <span>↗</span>";
+  document.querySelector("#cancel-category-edit").hidden = true;
+  document.querySelector(".category-create-copy strong").textContent = "Add a category";
+}
+
+function editCategory(slug) {
+  const category = categories.find((item) => item.slug === slug);
+  if (!category) return;
+  document.querySelector("#category-slug").value = category.slug;
+  document.querySelector("#category-name").value = category.name;
+  document.querySelector("#category-image").value = category.image || "";
+  document.querySelector("#category-submit").innerHTML = "Save category <span>↗</span>";
+  document.querySelector("#cancel-category-edit").hidden = false;
+  document.querySelector(".category-create-copy strong").textContent = `Editing ${category.name}`;
+  document.querySelector("#category-form").scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 async function toggleCategory(slug, currentlyActive) {
@@ -628,8 +693,8 @@ async function loadPromotions() {
     return;
   }
   document.querySelector("#promotions-list").innerHTML = data.length
-    ? `<table class="data-table"><thead><tr><th>Code</th><th>Discount</th><th>Minimum spend</th><th>Used</th><th>Visibility</th><th>Actions</th></tr></thead><tbody>${data.map((promotion) => `
-      <tr><td><span class="table-primary">${html(promotion.code)}</span><div class="table-muted">${html(promotion.description)}</div></td><td>${promotion.discount_type === "percentage" ? `${promotion.discount_value}%` : money(promotion.discount_value)}</td><td>${money(promotion.min_subtotal)}</td><td>${promotion.used_count}${promotion.usage_limit ? ` / ${promotion.usage_limit}` : " / ∞"}</td><td><span class="status-pill ${promotion.active ? "green" : ""}">${promotion.active ? "Live" : "Paused"}</span></td><td><button class="row-action" data-toggle-promotion="${html(promotion.id)}" data-active="${promotion.active}" type="button">${promotion.active ? "Pause" : "Activate"}</button></td></tr>
+    ? `<table class="data-table"><thead><tr><th>Code</th><th>Discount</th><th>Minimum spend</th><th>Used</th><th>Active period</th><th>Visibility</th><th>Actions</th></tr></thead><tbody>${data.map((promotion) => `
+      <tr><td><span class="table-primary">${html(promotion.code)}</span><div class="table-muted">${html(promotion.description)}</div></td><td>${promotion.discount_type === "percentage" ? `${promotion.discount_value}%` : money(promotion.discount_value)}</td><td>${money(promotion.min_subtotal)}</td><td>${promotion.used_count}${promotion.usage_limit ? ` / ${promotion.usage_limit}` : " / ∞"}</td><td><div class="table-muted">From ${dateTime(promotion.starts_at)}</div><div class="table-muted">Until ${dateTime(promotion.ends_at)}</div></td><td><span class="status-pill ${promotion.active ? "green" : ""}">${promotion.active ? "Live" : "Paused"}</span></td><td><button class="row-action" data-toggle-promotion="${html(promotion.id)}" data-active="${promotion.active}" type="button">${promotion.active ? "Pause" : "Activate"}</button></td></tr>
     `).join("")}</tbody></table>`
     : emptyTable("No discount codes yet. Create one above.");
 }
@@ -646,13 +711,27 @@ async function createPromotion(event) {
     errorRoot.textContent = type === "percentage" ? "Percentage discounts must be between 1% and 100%." : "Enter a fixed discount amount greater than zero.";
     return;
   }
+  const startValue = values.get("starts_at");
+  const endValue = values.get("ends_at");
+  const startTime = startValue ? new Date(startValue) : null;
+  const endTime = endValue ? new Date(endValue) : null;
+  if ((startTime && !Number.isFinite(startTime.getTime())) || (endTime && !Number.isFinite(endTime.getTime()))) {
+    errorRoot.textContent = "Enter valid promotion start and end dates.";
+    return;
+  }
+  if (startTime && endTime && endTime <= startTime) {
+    errorRoot.textContent = "The promotion end date must be later than the start date.";
+    return;
+  }
   const promotion = {
     code: String(values.get("code")).trim().toUpperCase(),
     description: String(values.get("description") || "").trim(),
     discount_type: type,
     discount_value: value,
     min_subtotal: Number(values.get("min_subtotal") || 0),
-    usage_limit: values.get("usage_limit") ? Number(values.get("usage_limit")) : null
+    usage_limit: values.get("usage_limit") ? Number(values.get("usage_limit")) : null,
+    starts_at: startTime ? startTime.toISOString() : null,
+    ends_at: endTime ? endTime.toISOString() : null
   };
   const { error } = await supabaseClient.from("promotions").insert(promotion);
   if (error) {
@@ -827,15 +906,26 @@ async function saveStoreSettings(event) {
   values.facebook_url = String(form.get("facebook_url") || "").trim();
   values.whatsapp_number = String(form.get("whatsapp_number") || "").trim();
   values.brand_color = String(form.get("brand_color") || "").trim();
-  values.delivery_fee = Number(form.get("delivery_fee"));
   values.free_shipping_threshold = Number(form.get("free_shipping_threshold"));
+  values.dhaka_delivery_fee = Number(form.get("dhaka_delivery_fee"));
+  values.outside_dhaka_delivery_fee = Number(form.get("outside_dhaka_delivery_fee"));
+  values.bkash_number = String(form.get("bkash_number") || "").trim().replace(/[০-৯]/g, (digit) => String("০১২৩৪৫৬৭৮৯".indexOf(digit))).replace(/[\s-]/g, "");
+  values.nagad_number = String(form.get("nagad_number") || "").trim().replace(/[০-৯]/g, (digit) => String("০১২৩৪৫৬৭৮৯".indexOf(digit))).replace(/[\s-]/g, "");
   if (!/^#[\da-f]{6}$/i.test(values.brand_color)) {
     document.querySelector("#settings-form-error").textContent = "Choose a valid six-digit brand color.";
     return;
   }
-  if (![values.delivery_fee, values.free_shipping_threshold].every((number) => Number.isSafeInteger(number) && number >= 0)) {
-    document.querySelector("#settings-form-error").textContent = "Delivery fee and free-delivery threshold must be whole numbers of zero or more.";
+  if (![values.dhaka_delivery_fee, values.outside_dhaka_delivery_fee, values.free_shipping_threshold].every((number) => Number.isSafeInteger(number) && number >= 0)) {
+    document.querySelector("#settings-form-error").textContent = "Delivery fees and free-delivery threshold must be whole numbers of zero or more.";
     return;
+  }
+  values.delivery_fee = values.outside_dhaka_delivery_fee;
+  for (const [label, number] of [["bKash", values.bkash_number], ["Nagad", values.nagad_number]]) {
+    if (number && !/^01\d{9}$/.test(number)) {
+      document.querySelector("#settings-form-error").textContent = `${label} personal number must be 11 digits and start with 01.`;
+      formElement.elements[label === "bKash" ? "bkash_number" : "nagad_number"].focus();
+      return;
+    }
   }
   if (values.facebook_url) {
     try {
@@ -977,8 +1067,11 @@ function bindAdminEvents() {
     if (toggle) toggleProduct(toggle.dataset.toggleProduct, toggle.dataset.active === "true");
   });
   document.querySelector("#category-form").addEventListener("submit", addCategory);
+  document.querySelector("#cancel-category-edit").addEventListener("click", resetCategoryForm);
   document.querySelector("#categories-list").addEventListener("click", (event) => {
+    const edit = event.target.closest("[data-edit-category]");
     const toggle = event.target.closest("[data-toggle-category]");
+    if (edit) editCategory(edit.dataset.editCategory);
     if (toggle) toggleCategory(toggle.dataset.toggleCategory, toggle.dataset.active === "true");
   });
   document.querySelector("#order-filter").addEventListener("change", (event) => {
